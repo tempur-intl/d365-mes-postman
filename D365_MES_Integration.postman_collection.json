@@ -1,0 +1,637 @@
+{
+  "info": {
+    "_postman_id": "688010bd-57ed-4a2b-857b-c94c15c89603",
+    "name": "D365 MES Integration",
+    "description": "Postman collection for Dynamics 365 Supply Chain Management MES Integration API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "1498918"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Get OAuth Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "pm.environment.set(\"access_token\", jsonData.access_token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{client_secret}}"
+                },
+                {
+                  "key": "resource",
+                  "value": "{{base_url}}"
+                }
+              ]
+            },
+            "url": {
+              "raw": "https://login.microsoftonline.com/{{tenant_id}}/oauth2/token",
+              "protocol": "https",
+              "host": [
+                "login",
+                "microsoftonline",
+                "com"
+              ],
+              "path": [
+                "{{tenant_id}}",
+                "oauth2",
+                "token"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Production Orders",
+      "item": [
+        {
+          "name": "Start Production Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"ProdProductionOrderStart\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"StartedQuantity\\\":{{started_qty}},\\\"StartedDate\\\":\\\"{{started_date}}\\\",\\\"AutomaticBOMConsumptionRule\\\":\\\"FlushingPrincip\\\",\\\"AutomaticRouteConsumptionRule\\\":\\\"RouteDependent\\\"}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/services/SysMessageServices/SysMessageService/SendMessage",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "services",
+                "SysMessageServices",
+                "SysMessageService",
+                "SendMessage"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Report as Finished",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"ProdProductionOrderReportFinished\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"ReportFinishedLines\\\":[{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"ReportedGoodQuantity\\\":{{good_qty}},\\\"ReportAsFinishedDate\\\":\\\"{{report_date}}\\\"}]}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/services/SysMessageServices/SysMessageService/SendMessage",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "services",
+                "SysMessageServices",
+                "SysMessageService",
+                "SendMessage"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Material Consumption (Picking List)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"ProdProductionOrderPickingList\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"PickingListLines\\\":[{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"ConsumptionBOMQuantity\\\":{{consumed_qty}},\\\"ConsumptionDate\\\":\\\"{{consumption_date}}\\\"}]}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/services/SysMessageServices/SysMessageService/SendMessage",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "services",
+                "SysMessageServices",
+                "SysMessageService",
+                "SendMessage"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Time Used for Operation (Route Card)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"ProdProductionOrderRouteCard\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"RouteCardLines\\\":[{\\\"OperationNumber\\\":{{operation_num}},\\\"Hours\\\":{{hours}},\\\"ConsumptionDate\\\":\\\"{{consumption_date}}\\\"}]}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/services/SysMessageServices/SysMessageService/SendMessage",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "services",
+                "SysMessageServices",
+                "SysMessageService",
+                "SendMessage"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "End Production Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"ProdProductionOrderEnd\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"EndedDate\\\":\\\"{{ended_date}}\\\"}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/services/SysMessageServices/SysMessageService/SendMessage",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "services",
+                "SysMessageServices",
+                "SysMessageService",
+                "SendMessage"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "prod_order",
+      "value": "10000553"
+    },
+    {
+      "key": "started_qty",
+      "value": "1"
+    },
+    {
+      "key": "started_date",
+      "value": "2024-02-04"
+    },
+    {
+      "key": "item_number",
+      "value": "A0001"
+    },
+    {
+      "key": "good_qty",
+      "value": "10"
+    },
+    {
+      "key": "report_date",
+      "value": "2024-02-04"
+    },
+    {
+      "key": "consumed_qty",
+      "value": "5"
+    },
+    {
+      "key": "consumption_date",
+      "value": "2024-02-04"
+    },
+    {
+      "key": "operation_num",
+      "value": "10"
+    },
+    {
+      "key": "hours",
+      "value": "2"
+    },
+    {
+      "key": "ended_date",
+      "value": "2024-02-04"
+    },
+    {
+      "key": "bom_rule",
+      "value": "FlushingPrincip"
+    },
+    {
+      "key": "route_rule",
+      "value": "RouteDependent"
+    },
+    {
+      "key": "print_label",
+      "value": "No"
+    },
+    {
+      "key": "auto_reserve",
+      "value": "No"
+    },
+    {
+      "key": "posting_date",
+      "value": "2024-02-04"
+    },
+    {
+      "key": "document_date",
+      "value": "2024-02-04"
+    },
+    {
+      "key": "voucher",
+      "value": ""
+    },
+    {
+      "key": "journal_name",
+      "value": "Prod"
+    },
+    {
+      "key": "journal_description",
+      "value": "MES Report Finished"
+    },
+    {
+      "key": "inventory_dimension_1",
+      "value": ""
+    },
+    {
+      "key": "inventory_dimension_2",
+      "value": ""
+    },
+    {
+      "key": "inventory_dimension_3",
+      "value": ""
+    },
+    {
+      "key": "inventory_dimension_4",
+      "value": ""
+    },
+    {
+      "key": "inventory_dimension_5",
+      "value": ""
+    },
+    {
+      "key": "inventory_dimension_6",
+      "value": ""
+    },
+    {
+      "key": "inventory_dimension_7",
+      "value": ""
+    },
+    {
+      "key": "inventory_dimension_8",
+      "value": ""
+    },
+    {
+      "key": "inventory_dimension_9",
+      "value": ""
+    },
+    {
+      "key": "inventory_dimension_10",
+      "value": ""
+    },
+    {
+      "key": "inventory_dimension_11",
+      "value": ""
+    },
+    {
+      "key": "inventory_dimension_12",
+      "value": ""
+    },
+    {
+      "key": "product_attribute_1",
+      "value": ""
+    },
+    {
+      "key": "product_attribute_2",
+      "value": ""
+    },
+    {
+      "key": "product_attribute_3",
+      "value": ""
+    },
+    {
+      "key": "product_attribute_4",
+      "value": ""
+    },
+    {
+      "key": "product_attribute_5",
+      "value": ""
+    },
+    {
+      "key": "product_attribute_6",
+      "value": ""
+    },
+    {
+      "key": "product_attribute_7",
+      "value": ""
+    },
+    {
+      "key": "product_attribute_8",
+      "value": ""
+    },
+    {
+      "key": "product_attribute_9",
+      "value": ""
+    },
+    {
+      "key": "product_attribute_10",
+      "value": ""
+    },
+    {
+      "key": "batch_number",
+      "value": ""
+    },
+    {
+      "key": "serial_number",
+      "value": ""
+    },
+    {
+      "key": "license_plate",
+      "value": ""
+    },
+    {
+      "key": "location",
+      "value": ""
+    },
+    {
+      "key": "warehouse",
+      "value": ""
+    },
+    {
+      "key": "site",
+      "value": ""
+    },
+    {
+      "key": "size",
+      "value": ""
+    },
+    {
+      "key": "color",
+      "value": ""
+    },
+    {
+      "key": "style",
+      "value": ""
+    },
+    {
+      "key": "configuration",
+      "value": ""
+    },
+    {
+      "key": "version",
+      "value": ""
+    },
+    {
+      "key": "operation_priority",
+      "value": "0"
+    },
+    {
+      "key": "operation_description",
+      "value": ""
+    },
+    {
+      "key": "resource_id",
+      "value": ""
+    },
+    {
+      "key": "resource_group",
+      "value": ""
+    },
+    {
+      "key": "setup_time",
+      "value": "0"
+    },
+    {
+      "key": "process_time",
+      "value": "0"
+    },
+    {
+      "key": "overlap_time",
+      "value": "0"
+    },
+    {
+      "key": "transport_time",
+      "value": "0"
+    },
+    {
+      "key": "queue_time_before",
+      "value": "0"
+    },
+    {
+      "key": "queue_time_after",
+      "value": "0"
+    },
+    {
+      "key": "quantity_good",
+      "value": "0"
+    },
+    {
+      "key": "quantity_error",
+      "value": "0"
+    },
+    {
+      "key": "quantity_scrap",
+      "value": "0"
+    },
+    {
+      "key": "error_cause_id",
+      "value": ""
+    },
+    {
+      "key": "error_cause_description",
+      "value": ""
+    },
+    {
+      "key": "start_date_time",
+      "value": ""
+    },
+    {
+      "key": "end_date_time",
+      "value": ""
+    },
+    {
+      "key": "worker_id",
+      "value": ""
+    },
+    {
+      "key": "worker_name",
+      "value": ""
+    },
+    {
+      "key": "shift_id",
+      "value": ""
+    },
+    {
+      "key": "shift_name",
+      "value": ""
+    },
+    {
+      "key": "team_id",
+      "value": ""
+    },
+    {
+      "key": "team_name",
+      "value": ""
+    },
+    {
+      "key": "machine_id",
+      "value": ""
+    },
+    {
+      "key": "machine_name",
+      "value": ""
+    },
+    {
+      "key": "tool_id",
+      "value": ""
+    },
+    {
+      "key": "tool_name",
+      "value": ""
+    },
+    {
+      "key": "property_1",
+      "value": ""
+    },
+    {
+      "key": "property_2",
+      "value": ""
+    },
+    {
+      "key": "property_3",
+      "value": ""
+    },
+    {
+      "key": "property_4",
+      "value": ""
+    },
+    {
+      "key": "property_5",
+      "value": ""
+    },
+    {
+      "key": "property_6",
+      "value": ""
+    },
+    {
+      "key": "property_7",
+      "value": ""
+    },
+    {
+      "key": "property_8",
+      "value": ""
+    },
+    {
+      "key": "property_9",
+      "value": ""
+    },
+    {
+      "key": "property_10",
+      "value": ""
+    }
+  ]
+}
