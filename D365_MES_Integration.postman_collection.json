@@ -270,7 +270,279 @@
           "response": []
         }
       ]
+    },
+
+    {
+      "name": "OData Endpoints",
+      "item": [
+        {
+          "name": "Get TSI_Items",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "OData-Version",
+                "value": "4.0"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/data/TSI_Items?$filter=dataAreaId eq '{{company_id}}' and ItemId eq '{{item_id}}'",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "data",
+                "TSI_Items"
+              ],
+              "query": [
+                {
+                  "key": "$filter",
+                  "value": "dataAreaId eq '{{company_id}}' and ItemId eq '{{item_id}}'"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get TSI_JmgJobs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "OData-Version",
+                "value": "4.0"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/data/TSI_JmgJobs?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}'",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "data",
+                "TSI_JmgJobs"
+              ],
+              "query": [
+                {
+                  "key": "$filter",
+                  "value": "dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}'"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get TSI_Labels",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "OData-Version",
+                "value": "4.0"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/data/TSI_Labels?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}'&$expand=Logos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "data",
+                "TSI_Labels"
+              ],
+              "query": [
+                {
+                  "key": "$filter",
+                  "value": "dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}'"
+                },
+                {
+                  "key": "$expand",
+                  "value": "Logos"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get TSI_LabelLogos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "OData-Version",
+                "value": "4.0"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/data/TSI_LabelLogos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "data",
+                "TSI_LabelLogos"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get TSI_ProdBOMLines",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "OData-Version",
+                "value": "4.0"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/data/TSI_ProdBOMLines?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}'",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "data",
+                "TSI_ProdBOMLines"
+              ],
+              "query": [
+                {
+                  "key": "$filter",
+                  "value": "dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}'"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get WarehouseWorkLines",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "OData-Version",
+                "value": "4.0"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/data/WarehouseWorkLines?$filter=dataAreaId eq '{{company_id}}' and WarehouseWorkStatus ne Microsoft.Dynamics.DataEntities.WHSWorkStatus'Closed' and WarehouseWorkStatus ne Microsoft.Dynamics.DataEntities.WHSWorkStatus'Cancelled'",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "data",
+                "WarehouseWorkLines"
+              ],
+              "query": [
+                {
+                  "key": "$filter",
+                  "value": "dataAreaId eq '{{company_id}}' and WarehouseWorkStatus ne Microsoft.Dynamics.DataEntities.WHSWorkStatus'Closed' and WarehouseWorkStatus ne Microsoft.Dynamics.DataEntities.WHSWorkStatus'Cancelled'"
+                },
+                {
+                  "key": "$select",
+                  "value": "LicensePlateNumber,WarehouseWorkStatus,WarehouseWorkId,ItemNumber"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get ItemBatches",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "OData-Version",
+                "value": "4.0"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/data/ItemBatches?$filter=dataAreaId eq '{{company_id}}' and BatchDispositionCode eq '{{disposition_code}}'",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "data",
+                "ItemBatches"
+              ],
+              "query": [
+                {
+                  "key": "$filter",
+                  "value": "dataAreaId eq '{{company_id}}' and BatchDispositionCode eq '{{disposition_code}}'"
+                },
+                {
+                  "key": "$select",
+                  "value": "ItemNumber,BatchNumber,BatchDispositionCode,ManufacturingDate,BatchExpirationDate"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
     }
+
   ],
   "variable": [
     {
@@ -632,6 +904,18 @@
     {
       "key": "property_10",
       "value": ""
+    },
+    {
+      "key": "item_id",
+      "value": "A0001"
+    },
+    {
+      "key": "prod_id",
+      "value": "10000553"
+    },
+    {
+      "key": "disposition_code",
+      "value": "QUARANTINE"
     }
   ]
 }

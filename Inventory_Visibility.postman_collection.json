@@ -1,0 +1,320 @@
+{
+  "info": {
+    "_postman_id": "47e38e2e-eac4-477c-b505-f9ee6f357bad",
+    "name": "Inventory Visibility Service",
+    "description": "Postman collection for testing Dynamics 365 Supply Chain Management Inventory Visibility Service API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "1498918"
+  },
+  "item": [
+    {
+      "name": "Get AAD Token for IV",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "let jsonData = pm.response.json();\r",
+              "pm.collectionVariables.set(\"access_token\", jsonData.access_token);\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disabledSystemHeaders": {}
+      },
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "client_id",
+              "value": "{{client_id}}",
+              "type": "text"
+            },
+            {
+              "key": "client_secret",
+              "value": "{{client_secret}}",
+              "type": "text"
+            },
+            {
+              "key": "grant_type",
+              "value": "client_credentials",
+              "type": "text"
+            },
+            {
+              "key": "scope",
+              "value": "{{aad_scope}}",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "https://login.microsoftonline.com/{{tenant_id}}/oauth2/v2.0/token",
+          "protocol": "https",
+          "host": [
+            "login",
+            "microsoftonline",
+            "com"
+          ],
+          "path": [
+            "{{tenant_id}}",
+            "oauth2",
+            "v2.0",
+            "token"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Bearer token using access token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "let jsonData = pm.response.json();",
+              "console.log(\"Bearer token response:\", jsonData);",
+              "",
+              "pm.test(\"Bearer token call succeeded\", function () {",
+              "  pm.expect(jsonData.error, jsonData.error_description || \"Token error\").to.not.exist;",
+              "  pm.expect(jsonData.access_token, \"Missing access_token\").to.exist;",
+              "});",
+              "",
+              "pm.collectionVariables.set(\"bearer_token\", jsonData.access_token);"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const raw = pm.request.body.raw;\r",
+              "console.log(\"Raw body before substitution:\", raw);\r",
+              "console.log(\"Body after substitution:\", pm.variables.replaceIn(raw));"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disabledSystemHeaders": {}
+      },
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Api-Version",
+            "value": "1.0"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json; charset=utf-8"
+          },
+          {
+            "key": "Api-version",
+            "value": "1.0"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"grant_type\": \"client_credentials\",\r\n    \"client_assertion_type\": \"aad_app\",\r\n    \"client_assertion\": \"{{aad_access_token}}\",\r\n    \"scope\": \"{{iv_scope}}\",\r\n    \"context\": \"{{environment_id}}\",\r\n    \"context_type\": \"{{context_type}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://securityservice.operations365.dynamics.com/token",
+          "protocol": "https",
+          "host": [
+            "securityservice",
+            "operations365",
+            "dynamics",
+            "com"
+          ],
+          "path": [
+            "token"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "IV Index Query",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var template = `\r",
+              "<style type=\"text/css\">\r",
+              "    .tftable {font-size:14px;color:#333333;width:100%;border-width: 1px;border-color: #87ceeb;border-collapse: collapse;}\r",
+              "    .tftable th {font-size:18px;background-color:#87ceeb;border-width: 1px;padding: 8px;border-style: solid;border-color: #87ceeb;text-align:left;}\r",
+              "    .tftable tr {background-color:#ffffff;}\r",
+              "    .tftable td {font-size:14px;border-width: 1px;padding: 8px;border-style: solid;border-color: #87ceeb;}\r",
+              "    .tftable tr:hover {background-color:#e0ffff;}\r",
+              "</style>\r",
+              "\r",
+              "<table class=\"tftable\" border=\"1\">\r",
+              "    <tr>\r",
+              "        <th>Product ID</th>\r",
+              "        <th>Site ID</th>\r",
+              "        <th>Location ID</th>\r",
+              "        <th>Quantities - FNO</th>\r",
+              "        <th>Quantities - POS</th>\r",
+              "        <th>Quantities - IV</th>\r",
+              "        <th>Quantities - @IV</th>\r",
+              "        <th>Organization ID</th>\r",
+              "    </tr>\r",
+              "    \r",
+              "    {{#each response}}\r",
+              "        <tr>\r",
+              "            <td>{{productId}}</td>\r",
+              "            <td>{{dimensions.siteid}}</td>\r",
+              "            <td>{{dimensions.locationid}}</td>\r",
+              "            <td>Arrived: {{quantities.fno.arrived}}, Availordered: {{quantities.fno.availordered}}, Ordered: {{quantities.fno.ordered}}, Physicalinvent: {{quantities.fno.physicalinvent}}, Reservphysical: {{quantities.fno.reservphysical}}, Orderedsum: {{quantities.fno.orderedsum}}, Softreserved: {{quantities.fno.softreserved}}</td>\r",
+              "            <td>Inbound: {{quantities.pos.inbound}}, Outbound: {{quantities.pos.outbound}}</td>\r",
+              "            <td>Ordered: {{quantities.iv.ordered}}, Softreserved: {{quantities.iv.softreserved}}, Availabletoreserve: {{quantities.iv.availabletoreserve}}, Totalavailable: {{quantities.iv.totalavailable}}</td>\r",
+              "            <td>Allocated: {{quantities[\"@iv\"][\"@allocated\"]}}</td>\r",
+              "            <td>{{organizationId}}</td>\r",
+              "        </tr>\r",
+              "    {{/each}}\r",
+              "</table>\r",
+              "`;\r",
+              "\r",
+              "function constructVisualizerPayload() {\r",
+              "    return {response: pm.response.json()}\r",
+              "}\r",
+              "\r",
+              "pm.visualizer.set(template, constructVisualizerPayload());"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Api-Version",
+            "value": "2.0",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{bearer_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n\t\"dimensionDataSource\": \"fno\",\r\n\t\"filters\": {\r\n\t\t\"ProductId\": [\r\n\t\t\t\"{{product_id}}\"\r\n\t\t],\r\n\t\t\"SiteId\": [\r\n\t\t\t\"{{site_id}}\"\r\n\t\t],\r\n\t\t\"LocationId\": [\r\n\t\t\t\"{{location_id}}\"\r\n\t\t],\r\n\t\t\"OrganizationId\": [\r\n\t\t\t\"{{organization_id}}\"\r\n\t\t]\r\n\t},\r\n\t\"groupByValues\": [\r\n\t\t\"BatchId\",\r\n\t\t\"LocationId\",\r\n\t\t\"WMSLocationId\",\r\n\t\t\"LicensePlateId\"\r\n\t],\r\n\t\"returnNegative\": true,\r\n\t\"queryATP\": false\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{iv_base_url}}/api/environment/{{environment_id}}/onhand/indexquery",
+          "protocol": "https",
+          "host": [
+            "{{iv_base_url}}"
+          ],
+          "path": [
+            "api",
+            "environment",
+            "{{environment_id}}",
+            "onhand",
+            "indexquery"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "bearer_token",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "aad_access_token",
+      "value": ""
+    }
+  ]
+}
