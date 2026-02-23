@@ -368,7 +368,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/TSI_Labels?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}'&$expand=Logos",
+              "raw": "{{base_url}}/data/TSI_Labels?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}' and (UDIUnit eq 'x1' or HasUDI eq 0)&$expand=Logos",
               "host": [
                 "{{base_url}}"
               ],
@@ -379,7 +379,7 @@
               "query": [
                 {
                   "key": "$filter",
-                  "value": "dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}'"
+                  "value": "dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}' and (UDIUnit eq 'x1' or HasUDI eq 0)"
                 },
                 {
                   "key": "$expand",
