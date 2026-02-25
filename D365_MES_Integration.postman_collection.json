@@ -175,7 +175,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"ProdProductionOrderPickingList\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"PickingListLines\\\":[{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"ConsumptionBOMQuantity\\\":{{consumed_qty}},\\\"ConsumptionDate\\\":\\\"{{consumption_date}}\\\"}]}\"\n}"
+              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"ProdProductionOrderPickingList\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"PickingListLines\\\":[{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"ConsumptionBOMQuantity\\\":{{consumed_qty}},\\\"ConsumptionDate\\\":\\\"{{consumption_date}}\\\",\\\"ItemBatchNumber\\\":\\\"{{item_batch_number}}\\\",\\\"LicensePlateNumber\\\":\\\"{{license_plate_number}}\\\"}]}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/services/SysMessageServices/SysMessageService/SendMessage",
