@@ -99,7 +99,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"ProdProductionOrderStart\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"StartedQuantity\\\":{{started_qty}},\\\"StartedDate\\\":\\\"{{started_date}}\\\",\\\"AutomaticBOMConsumptionRule\\\":\\\"FlushingPrincip\\\",\\\"AutomaticRouteConsumptionRule\\\":\\\"RouteDependent\\\"}\"\n}"
+              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"ProdProductionOrderStart\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"StartedQuantity\\\":{{started_qty}},\\\"StartedDate\\\":\\\"{{started_date}}\\\",\\\"AutomaticBOMConsumptionRule\\\":\\\"{{bom_rule}}\\\",\\\"AutomaticRouteConsumptionRule\\\":\\\"{{route_rule}}\\\"}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/services/SysMessageServices/SysMessageService/SendMessage",
@@ -137,7 +137,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"ProdProductionOrderReportFinished\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"ReportFinishedLines\\\":[{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"ReportedGoodQuantity\\\":{{good_qty}},\\\"ReportAsFinishedDate\\\":\\\"{{report_date}}\\\"}]}\"\n}"
+              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"ProdProductionOrderReportFinished\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"PrintLabel\\\":\\\"{{print_label}}\\\",\\\"ReportFinishedLines\\\":[{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"ReportedGoodQuantity\\\":{{good_qty}},\\\"ReportAsFinishedDate\\\":\\\"{{report_date}}\\\",\\\"AutomaticBOMConsumptionRule\\\":\\\"{{automatic_bom_consumption_rule}}\\\",\\\"AutomaticRouteConsumptionRule\\\":\\\"{{automatic_route_consumption_rule}}\\\",\\\"EndJob\\\":\\\"{{end_job}}\\\",\\\"EndPickingList\\\":\\\"{{end_picking_list}}\\\",\\\"EndRouteCard\\\":\\\"{{end_route_card}}\\\"}]}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/services/SysMessageServices/SysMessageService/SendMessage",
@@ -916,6 +916,150 @@
     {
       "key": "disposition_code",
       "value": "QUARANTINE"
+    },
+    {
+      "key": "line_number",
+      "value": ""
+    },
+    {
+      "key": "production_type",
+      "value": ""
+    },
+    {
+      "key": "reported_error_quantity",
+      "value": ""
+    },
+    {
+      "key": "reported_error_catch_weight_quantity",
+      "value": ""
+    },
+    {
+      "key": "reported_good_catch_weight_quantity",
+      "value": ""
+    },
+    {
+      "key": "accept_error",
+      "value": "No"
+    },
+    {
+      "key": "error_cause",
+      "value": ""
+    },
+    {
+      "key": "executed_date_time",
+      "value": ""
+    },
+    {
+      "key": "automatic_bom_consumption_rule",
+      "value": "FlushingPrincip"
+    },
+    {
+      "key": "automatic_route_consumption_rule",
+      "value": "Always"
+    },
+    {
+      "key": "respect_flushing_principle_during_overproduction",
+      "value": ""
+    },
+    {
+      "key": "journal_name_id",
+      "value": "RAF"
+    },
+    {
+      "key": "picking_list_journal_name_id",
+      "value": "Pick"
+    },
+    {
+      "key": "route_card_journal_name_id",
+      "value": "Route"
+    },
+    {
+      "key": "from_operation_number",
+      "value": ""
+    },
+    {
+      "key": "to_operation_number",
+      "value": ""
+    },
+    {
+      "key": "inventory_lot_id",
+      "value": ""
+    },
+    {
+      "key": "base_value",
+      "value": ""
+    },
+    {
+      "key": "end_job",
+      "value": "No"
+    },
+    {
+      "key": "end_picking_list",
+      "value": "No"
+    },
+    {
+      "key": "end_route_card",
+      "value": "No"
+    },
+    {
+      "key": "post_now",
+      "value": ""
+    },
+    {
+      "key": "auto_update",
+      "value": ""
+    },
+    {
+      "key": "product_color_id",
+      "value": ""
+    },
+    {
+      "key": "product_configuration_id",
+      "value": ""
+    },
+    {
+      "key": "product_size_id",
+      "value": ""
+    },
+    {
+      "key": "product_style_id",
+      "value": ""
+    },
+    {
+      "key": "product_version_id",
+      "value": ""
+    },
+    {
+      "key": "item_batch_number",
+      "value": ""
+    },
+    {
+      "key": "product_serial_number",
+      "value": ""
+    },
+    {
+      "key": "generate_license_plate",
+      "value": ""
+    },
+    {
+      "key": "license_plate_number",
+      "value": ""
+    },
+    {
+      "key": "inventory_status_id",
+      "value": ""
+    },
+    {
+      "key": "production_warehouse_id",
+      "value": ""
+    },
+    {
+      "key": "production_site_id",
+      "value": ""
+    },
+    {
+      "key": "production_warehouse_location_id",
+      "value": ""
     }
   ]
 }
