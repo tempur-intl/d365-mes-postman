@@ -175,7 +175,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"ProdProductionOrderPickingList\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"PickingListLines\\\":[{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"ConsumptionBOMQuantity\\\":{{consumed_qty}},\\\"ConsumptionDate\\\":\\\"{{consumption_date}}\\\",\\\"ItemBatchNumber\\\":\\\"{{item_batch_number}}\\\",\\\"LicensePlateNumber\\\":\\\"{{license_plate_number}}\\\"}]}\"\n}"
+              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"ProdProductionOrderPickingList\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"PickingListLines\\\":[{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"ConsumptionBOMQuantity\\\":{{consumed_qty}},\\\"ConsumptionDate\\\":\\\"{{consumption_date}}\\\",\\\"ItemBatchNumber\\\":\\\"{{item_batch_number}}\\\",\\\"LicensePlateNumber\\\":\\\"{{license_plate_number}}\\\",\\\"ProductionWarehouseLocationId\\\":\\\"{{production_warehouse_location_id}}\\\"}]}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/services/SysMessageServices/SysMessageService/SendMessage",
@@ -313,7 +313,7 @@
           "response": []
         },
         {
-          "name": "Get TSI_JmgJobs",
+          "name": "Get TSI_Jobs",
           "request": {
             "method": "GET",
             "header": [
@@ -331,13 +331,13 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/TSI_JmgJobs?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}'",
+              "raw": "{{base_url}}/data/TSI_Jobs?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}'",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "data",
-                "TSI_JmgJobs"
+                "TSI_Jobs"
               ],
               "query": [
                 {
