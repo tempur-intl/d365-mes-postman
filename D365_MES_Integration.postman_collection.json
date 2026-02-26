@@ -6,6 +6,21 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "1498918"
   },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const today = new Date().toISOString().split('T')[0];",
+          "if (!pm.collectionVariables.get(\"started_date\")) { pm.collectionVariables.set(\"started_date\", today); }",
+          "if (!pm.collectionVariables.get(\"report_date\")) { pm.collectionVariables.set(\"report_date\", today); }",
+          "if (!pm.collectionVariables.get(\"consumption_date\")) { pm.collectionVariables.set(\"consumption_date\", today); }",
+          "if (!pm.collectionVariables.get(\"ended_date\")) { pm.collectionVariables.set(\"ended_date\", today); }"
+        ]
+      }
+    }
+  ],
   "item": [
     {
       "name": "Authentication",
@@ -547,7 +562,7 @@
   "variable": [
     {
       "key": "prod_order",
-      "value": "10000553"
+      "value": "10001115"
     },
     {
       "key": "started_qty",
@@ -555,27 +570,27 @@
     },
     {
       "key": "started_date",
-      "value": "2024-02-04"
+      "value": "2026-02-26"
     },
     {
       "key": "item_number",
-      "value": "A0001"
+      "value": "35357"
     },
     {
       "key": "good_qty",
-      "value": "10"
+      "value": "1"
     },
     {
       "key": "report_date",
-      "value": "2024-02-04"
+      "value": "2026-02-26"
     },
     {
       "key": "consumed_qty",
-      "value": "5"
+      "value": "1"
     },
     {
       "key": "consumption_date",
-      "value": "2024-02-04"
+      "value": "2026-02-26"
     },
     {
       "key": "operation_num",
@@ -587,7 +602,7 @@
     },
     {
       "key": "ended_date",
-      "value": "2024-02-04"
+      "value": "2026-02-26"
     },
     {
       "key": "bom_rule",
@@ -607,11 +622,11 @@
     },
     {
       "key": "posting_date",
-      "value": "2024-02-04"
+      "value": "2026-02-26"
     },
     {
       "key": "document_date",
-      "value": "2024-02-04"
+      "value": "2026-02-26"
     },
     {
       "key": "voucher",
@@ -1031,7 +1046,7 @@
     },
     {
       "key": "item_batch_number",
-      "value": ""
+      "value": "thy11"
     },
     {
       "key": "product_serial_number",
@@ -1043,7 +1058,7 @@
     },
     {
       "key": "license_plate_number",
-      "value": ""
+      "value": "thy11"
     },
     {
       "key": "inventory_status_id",
