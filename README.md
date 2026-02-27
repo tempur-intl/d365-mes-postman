@@ -16,7 +16,20 @@ Provides requests for interacting with the Dynamics 365 MES Integration API (mes
 - **OAuth Authentication**: Client credentials flow with automatic token storage
 - **Environment Support**: Separate environments for Development and UAT
 
-### 2. Inventory Visibility Service Collection
+### 2. Secret Bill of Materials (SBOM) Collection
+**File**: `SBOM.postman_collection.json`
+
+Provides requests for validating that Dynamics 365 Extended Data Security (XDS) policies correctly restrict access to items in the range **18000–18499** across all protected OData data entities.
+
+**Features:**
+- **Seven table-scoped folders**: Requests are organised by the underlying D365 table targeted by the XDS policy (BOMVersion, BOM, InventJournalTrans, InventTrans, ProdBOM, ProdJournalBOM, ReqTrans)
+- **Leak detection tests**: Each request asserts that no item in the restricted range appears in any item-related field of the response
+- **Access-verification tests**: Where test data is expected to exist, a separate assertion confirms that at least one record was returned — distinguishing a correctly filtered response from a broken connection or overly broad policy block
+- **Correct field names per entity**: Item fields are taken directly from the OData $metadata (e.g. `ItemNumber`, `ItemId`, `ComponentItemNumber`) rather than assumed
+- **Scoped queries**: BOM version and production header requests are filtered to the test items (`85375` and `89002`) rather than returning all company data
+- **OAuth Authentication**: Reuses the same client credentials bearer token pattern as the other collections
+
+### 3. Inventory Visibility Service Collection
 **File**: `Inventory_Visibility.postman_collection.json`
 
 Provides requests for testing the Dynamics 365 Inventory Visibility Service API.
@@ -41,6 +54,41 @@ Provides requests for testing the Dynamics 365 Inventory Visibility Service API.
    - `client_id`: Application (client) ID from Azure AD app registration
    - `client_secret`: Client secret from Azure AD app registration
    - `company_id`: Company ID in D365 (e.g., "500")
+
+### Secret Bill of Materials (SBOM) Collection
+
+1. Import the collection: `SBOM.postman_collection.json`
+2. Import an existing D365 environment:
+   - `D365_Dev.postman_environment.json` for Development
+   - `D365_UAT.postman_environment.json` for UAT
+
+3. Ensure the following environment variables are set:
+   - `tenant_id`: Your Azure AD tenant ID
+   - `client_id`: Application (client) ID from Azure AD app registration
+   - `client_secret`: Client secret from Azure AD app registration
+   - `company_id`: Legal entity (e.g., "500")
+
+4. The collection contains the following collection-level variables — update them if your test data changes:
+
+   | Variable | Default | Purpose |
+   |---|---|---|
+   | `parentItem` | `85375` | The manufactured item whose BOM is under test |
+   | `phantomItem` | `89002` | Phantom sub-assembly item whose components are restricted |
+   | `controlItems` | `14244,18963,18959` | Non-restricted direct components that must remain visible |
+   | `restrictedRangeMin` | `18000` | Lower bound of the XDS-restricted item number range |
+   | `restrictedRangeMax` | `18499` | Upper bound of the XDS-restricted item number range |
+   | `restrictedItems` | `18009,18011,18014,18015` | Comma-separated specific restricted items present in test data, used as OData `eq`/`or` filters where range operators are unsupported |
+   | `productionOrderNumber` | `10001108` | Production order number used to filter production-order-scoped entities |
+
+   The following variables are **auto-built at runtime** by the collection pre-request script from `restrictedItems` — do not edit them manually:
+
+   | Variable | OData field targeted |
+   |---|---|
+   | `restrictedItems_ItemNumber` | `ItemNumber` |
+   | `restrictedItems_ItemId` | `ItemId` |
+   | `restrictedItems_ProductNumber` | `ProductNumber` |
+   | `restrictedItems_TaxInventVATItemId` | `TaxInventVATItemId` |
+   | `restrictedItems_TSIItemId` | `TSIItemId` |
 
 ### Inventory Visibility Service Collection
 
@@ -69,6 +117,13 @@ Provides requests for testing the Dynamics 365 Inventory Visibility Service API.
 3. Adjust the collection variables as needed for your test data
 4. For MES requests, modify the raw body to include additional fields as needed
 5. For OData requests, adjust filter variables as needed
+
+### Secret Bill of Materials (SBOM)
+
+1. Select the appropriate environment (Dev or UAT)
+2. Run the "Get OAuth Token" request from the D365 MES Integration collection to obtain an access token (or add one to this collection)
+3. Run an individual folder to validate a specific D365 table's XDS policy, or run the entire collection to validate all tables at once
+4. A passing run means no restricted items (18000–18499) leaked through; a failing "Records returned" test means the querying identity may lack access entirely — check the service account's role assignments
 
 ### Inventory Visibility Service
 
@@ -117,6 +172,41 @@ The MES collection includes **70+ variables** covering all possible fields from 
 - **Worker & Equipment**: Worker, shift, team, machine, tool information
 - **Custom Properties**: 10 additional custom properties
 
+## SBOM Details
+
+### Test Data Structure
+
+The collection is designed around a specific phantom BOM scenario:
+
+- **Parent item** (`85375`): The manufactured item. Its BOM contains non-restricted direct components and the phantom item `89002`.
+- **Phantom item** (`89002`): A phantom BOM sub-assembly. All of its BOM components fall within the restricted range and should be invisible to the XDS-restricted identity.
+- **Control items** (`14244`, `18963`, `18959`): Non-restricted direct components of `85375`. These must remain visible — their absence would indicate a broader access problem rather than XDS working correctly.
+- **Restricted items** (`18009`, `18011`, `18014`, `18015`): Components of the phantom BOM. These must not appear in any response.
+
+### Folder Structure
+
+Each folder corresponds to one D365 table covered by the XDS policy:
+
+| Folder | Table | What is tested |
+|---|---|---|
+| BOMVersion | `BOMVersion` | BOM and formula version header entities filtered to items `85375` and `89002` |
+| BOM | `BOM` | BOM and formula line entities across the company |
+| InventJournalTrans | `InventJournalTrans` | All inventory journal transaction entities (adjustment, movement, transfer, counting) |
+| InventTrans | `InventTrans` | Inventory transaction entities (`ItemId` field) |
+| ProdBOM | `ProdBOM` | Production order BOM line entities; checks both `ItemNumber` (produced) and `ComponentItemNumber` (component) |
+| ProdJournalBOM | `ProdJournalBOM` | Production picking list journal entries |
+| ReqTrans | `ReqTrans` | Dynamic plan production order schedule entity |
+
+### Test Assertions
+
+Every request in the collection runs three tests:
+
+1. **Status 200 OK** — confirms the endpoint is reachable and the token is valid
+2. **No restricted items (18000–18499) present** — iterates every record in the response and checks all configured item fields; fails with a descriptive `XDS LEAK –` message including the exact field and value if a restricted item is found
+3. **Records returned** (where applicable) — fails if the response is empty, which would otherwise cause test 2 to silently pass for the wrong reason
+
+Entities where test data may not exist in all environments (e.g. formula/PMF entities, EDI entities) skip assertion 3 and emit a console warning instead.
+
 ## Inventory Visibility Details
 
 ### Requests
@@ -144,6 +234,11 @@ The Inventory Visibility collection uses environment variables for all configura
 - The MES integration processes messages asynchronously (every 1 minute)
 - Check the Manufacturing execution systems integration page in D365 for message status
 - Ensure the Time and attendance license key is enabled in D365
+
+### SBOM
+- The collection does not include a token request — use "Get OAuth Token" from the D365 MES Integration collection to populate `access_token` before running
+- OData returns a maximum of 100 records per request (`$top=100`); if your environment has more than 100 journal lines or transactions for the test data, restricted items could theoretically appear beyond the first page without being caught — adjust `$top` or add pagination handling if this is a concern
+- Entities marked `NOT FOUND IN METADATA` in the generator output are custom or EDI entities not published in the standard $metadata; field names for these were inferred from D365 documentation and should be verified against a live response
 
 ### Inventory Visibility
 - The Inventory Visibility service requires proper Azure AD app registration and permissions

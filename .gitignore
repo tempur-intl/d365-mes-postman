@@ -1,0 +1,6 @@
+# Helper scripts and generated files
+scripts/
+
+# Temporary files
+/tmp/
+*.tmp
