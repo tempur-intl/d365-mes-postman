@@ -2513,7 +2513,7 @@
                 }
               ]
             },
-            "description": "GET TSI_ProdBOMLines\nFilter: ProdId eq '{{productionOrderNumber}}'\nItem fields checked: ItemNumber"
+            "description": "GET TSI_ProdBOMLines\nFilter: ProdId eq '{{productionOrderNumber}}'\nItem fields checked: ItemId"
           },
           "event": [
             {
@@ -2524,11 +2524,11 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
-                  "// Item fields checked: ItemNumber",
+                  "// Item fields checked: ItemId",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
                   "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
-                  "var ITEM_FIELDS    = [\"ItemNumber\"];",
+                  "var ITEM_FIELDS    = [\"ItemId\"];",
                   "",
                   "function isRestricted(val) {",
                   "    if (val === null || val === undefined || val === \"\") return false;",
