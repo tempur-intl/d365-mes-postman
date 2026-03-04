@@ -133,6 +133,82 @@
           "response": []
         },
         {
+          "name": "Inventory Count Journal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"TSIInventCountJournal\",\n  \"_messageContent\": \"{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"Location\\\":{{location}},\\\"LicensePlate\\\":\\\"{{license_plate_number}}\\\",\\\"CountedQuantity\\\":\\\"{{counted_qty}}\\\",\\\"CountDate\\\":\\\"{{count_date}}\\\"}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/services/SysMessageServices/SysMessageService/SendMessage",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "services",
+                "SysMessageServices",
+                "SysMessageService",
+                "SendMessage"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Batch Disposition",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"TSIUpdateBatchDisposition\",\n  \"_messageContent\": \"{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"BatchNumber\\\":{{item_batch_number}},\\\"DispositionCode\\\":\\\"{{disposition_code}}\\\"}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/services/SysMessageServices/SysMessageService/SendMessage",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "services",
+                "SysMessageServices",
+                "SysMessageService",
+                "SendMessage"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Report as Finished",
           "request": {
             "method": "POST",
@@ -1130,6 +1206,14 @@
     },
     {
       "key": "destination_location",
+      "value": ""
+    },
+    {
+      "key": "counted_qty",
+      "value": "1"
+    },
+    {
+      "key": "count_date",
       "value": ""
     }
   ]
