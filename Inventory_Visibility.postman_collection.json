@@ -15,7 +15,7 @@
           "script": {
             "exec": [
               "let jsonData = pm.response.json();\r",
-              "pm.collectionVariables.set(\"access_token\", jsonData.access_token);\r",
+              "pm.collectionVariables.set(\"aad_access_token\", jsonData.access_token);\r",
               ""
             ],
             "type": "text/javascript",
@@ -102,7 +102,7 @@
               "  pm.expect(jsonData.access_token, \"Missing access_token\").to.exist;",
               "});",
               "",
-              "pm.collectionVariables.set(\"bearer_token\", jsonData.access_token);"
+              "pm.environment.set(\"bearer_token\", jsonData.access_token);"
             ],
             "type": "text/javascript",
             "packages": {},
