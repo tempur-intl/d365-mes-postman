@@ -288,6 +288,54 @@
     },
 
     {
+      "name": "MES Web Services",
+      "item": [
+        {
+          "name": "Create movement work",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"_contract\": {\n    \"LicensePlate\": \"{{license_plate_number}}\",\n    \"DataAreaId\": \"{{company_id}}\",\n    \"SourceLocation\": \"{{source_location}}\",\n    \"DestinationLocation\": \"{{destination_location}}\",\n    \"Quantity\": 0,\n    \"ItemId\": \"\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/services/TSIMesWebServices/TSIMesWebService/process",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "services",
+                "TSIMesWebServices",
+                "TSIMesWebService",
+                "process"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "OData Endpoints",
       "item": [
         {
@@ -1074,6 +1122,14 @@
     },
     {
       "key": "production_warehouse_location_id",
+      "value": ""
+    },
+    {
+      "key": "source_location",
+      "value": ""
+    },
+    {
+      "key": "destination_location",
       "value": ""
     }
   ]
