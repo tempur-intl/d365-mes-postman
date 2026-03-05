@@ -152,7 +152,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"TSIInventCountJournal\",\n  \"_messageContent\": \"{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"Location\\\":{{location}},\\\"LicensePlate\\\":\\\"{{license_plate_number}}\\\",\\\"CountedQuantity\\\":\\\"{{counted_qty}}\\\",\\\"CountDate\\\":\\\"{{count_date}}\\\"}\"\n}"
+              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"TSIInventCountJournal\",\n  \"_messageContent\": \"{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"Location\\\":\\\"{{location}}\\\",\\\"LicensePlate\\\":\\\"{{license_plate_number}}\\\",\\\"CountedQuantity\\\":\\\"{{counted_qty}}\\\",\\\"CountDate\\\":\\\"{{count_date}}\\\"}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/services/SysMessageServices/SysMessageService/SendMessage",
@@ -190,7 +190,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"TSIUpdateBatchDisposition\",\n  \"_messageContent\": \"{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"BatchNumber\\\":{{item_batch_number}},\\\"DispositionCode\\\":\\\"{{disposition_code}}\\\"}\"\n}"
+              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"TSIUpdateBatchDisposition\",\n  \"_messageContent\": \"{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"BatchNumber\\\":\\\"{{item_batch_number}}\\\",\\\"DispositionCode\\\":\\\"{{disposition_code}}\\\"}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/services/SysMessageServices/SysMessageService/SendMessage",
