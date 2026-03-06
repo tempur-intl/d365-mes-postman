@@ -2,6 +2,8 @@
 
 This repository contains Postman collections for testing Dynamics 365 Supply Chain Management Manufacturing Execution System (MES) related services.
 
+![Postman collection overview](screenshots/postman_overview.png)
+
 ## Collections Overview
 
 ### 1. D365 MES Integration Collection
