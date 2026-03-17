@@ -13,7 +13,9 @@ Provides requests for interacting with the Dynamics 365 MES Integration API (mes
 
 **Features:**
 - **MES Message API**: Pre-configured requests for production order operations (Start, Report Finished, Material Consumption, etc.)
+- **MES Web Services**: Synchronous request/response calls to the TSI custom web service layer (`TSIMesWebServices/TSIMesWebService/process`), used where an immediate response or return value is required
 - **OData Endpoints**: Queries for TSI custom entities and standard D365 entities (WarehouseWorkLines, ItemBatches)
+- **Business Events (Service Bus)**: Peek-lock requests for D365 business events published to Azure Service Bus topics, with SAS token authentication computed at request time
 - **Comprehensive Variables**: 70+ variables covering all possible fields
 - **OAuth Authentication**: Client credentials flow with automatic token storage
 - **Environment Support**: Separate environments for Development and UAT
@@ -56,6 +58,19 @@ Provides requests for testing the Dynamics 365 Inventory Visibility Service API.
    - `client_id`: Application (client) ID from Azure AD app registration
    - `client_secret`: Client secret from Azure AD app registration
    - `company_id`: Company ID in D365 (e.g., "500")
+
+4. Set the Service Bus variables for the **Business Events** folder:
+
+   | Variable | Description |
+   |---|---|
+   | `servicebus_connection_string` | Full SAS connection string from the Azure Service Bus namespace (e.g. `Endpoint=sb://...;SharedAccessKeyName=...;SharedAccessKey=...`) |
+   | `servicebus_topic_released` | Topic name for `TSIProductionOrderReleasedToMESBusinessEvent` |
+   | `servicebus_sub_released` | Subscription name under the above topic |
+   | `servicebus_topic_updated` | Topic name for `TSIProductionOrderUpdatedMESEvent` |
+   | `servicebus_sub_updated` | Subscription name under the above topic |
+   | `servicebus_peek_count` | Max messages to peek per request (default: `10`, informational only) |
+
+   The variables `servicebus_namespace` and `servicebus_sas_token` are **populated automatically** by the folder pre-request script — do not edit them manually.
 
 ### Secret Bill of Materials (SBOM) Collection
 
@@ -120,6 +135,25 @@ Provides requests for testing the Dynamics 365 Inventory Visibility Service API.
 4. For MES requests, modify the raw body to include additional fields as needed
 5. For OData requests, adjust filter variables as needed
 
+### MES Web Services (Synchronous)
+
+1. Select the appropriate environment (Dev or UAT)
+2. Run the "Get OAuth Token" request to obtain an access token
+3. Open the **MES Web Services** folder
+4. Set the relevant collection variables (`license_plate_number`, `source_location`, `destination_location`) for your scenario
+5. Run the **Create movement work** request; the response body contains the result synchronously — no polling required
+
+### Business Events (Service Bus)
+
+1. Ensure the Service Bus environment variables are set (see Setup above)
+2. Open the **Business Events (Service Bus)** folder in the collection
+3. Run either peek request:
+   - **Peek - TSIProductionOrderReleasedToMESBusinessEvent** — peeks a message from the Released event topic
+   - **Peek - TSIProductionOrderUpdatedMESEvent** — peeks a message from the Updated event topic
+4. The test script logs the message body and `BrokerProperties` (MessageId, LockToken, SequenceNumber) to the Postman console, then automatically abandons the lock
+
+> **Note:** The Azure Service Bus HTTP REST API only supports **peek-lock** (not a true non-destructive peek). Each peek increments the message delivery count. If the delivery count reaches the topic/subscription's `MaxDeliveryCount` limit, the message is moved to the Dead Letter Queue (DLQ). To inspect messages without side effects, use the [Azure Portal Service Bus Explorer](https://learn.microsoft.com/azure/service-bus-messaging/explorer) (Peek mode) or the `az servicebus` CLI.
+
 ### Secret Bill of Materials (SBOM)
 
 1. Select the appropriate environment (Dev or UAT)
@@ -136,6 +170,45 @@ Provides requests for testing the Dynamics 365 Inventory Visibility Service API.
 5. Adjust filter variables as needed for your test data
 
 ## MES Integration Details
+
+### Business Events (Service Bus)
+
+The **Business Events (Service Bus)** folder contains peek requests for D365 business events delivered to Azure Service Bus topics.
+
+**Authentication:** A SAS token is computed from the `servicebus_connection_string` environment variable in the folder's pre-request script using `CryptoJS.HmacSHA256`. The derived `servicebus_namespace` and `servicebus_sas_token` variables are written to the environment automatically.
+
+**Requests:**
+
+| Request | Topic variable | Subscription variable | Business event |
+|---|---|---|---|
+| Peek - TSIProductionOrderReleasedToMESBusinessEvent | `servicebus_topic_released` | `servicebus_sub_released` | `TSIProductionOrderReleasedToMESBusinessEvent` |
+| Peek - TSIProductionOrderUpdatedMESEvent | `servicebus_topic_updated` | `servicebus_sub_updated` | `TSIProductionOrderUpdatedMESEvent` |
+
+Each request uses `POST .../messages/head?timeout=60` (peek-lock, HTTP 201) or receives HTTP 204 when no messages are queued. The test script parses the `BrokerProperties` response header and abandons the lock via a follow-up `PUT` request so the message remains on the subscription.
+
+### MES Web Services (Synchronous)
+
+The **MES Web Services** folder provides synchronous request/response calls to the TSI custom web service layer. Unlike the message-based `SysMessageService` (which queues work asynchronously and returns no payload), these calls return a result immediately.
+
+**Endpoint:** `POST {{base_url}}/api/services/TSIMesWebServices/TSIMesWebService/process`
+
+**Authentication:** `Bearer {{access_token}}` (same OAuth token used by all other collection requests)
+
+**Requests:**
+
+| Request | Description | Key body fields |
+|---|---|---|
+| Create movement work | Creates a warehouse movement work order synchronously | `LicensePlate`, `SourceLocation`, `DestinationLocation`, `Quantity`, `ItemId`, `DataAreaId` |
+
+**Collection variables used:**
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `license_plate_number` | `thy11` | License plate to move |
+| `source_location` | _(empty)_ | Origin warehouse location |
+| `destination_location` | _(empty)_ | Target warehouse location |
+
+`DataAreaId` is sourced from the `company_id` environment variable. `Quantity` and `ItemId` are set directly in the request body.
 
 ### MES Message API Requests
 
