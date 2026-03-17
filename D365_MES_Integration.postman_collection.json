@@ -362,7 +362,6 @@
         }
       ]
     },
-
     {
       "name": "MES Web Services",
       "item": [
@@ -424,12 +423,12 @@
                 "value": "Bearer {{access_token}}"
               },
               {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
                 "key": "OData-Version",
                 "value": "4.0"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
               }
             ],
             "url": {
@@ -461,12 +460,12 @@
                 "value": "Bearer {{access_token}}"
               },
               {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
                 "key": "OData-Version",
                 "value": "4.0"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
               }
             ],
             "url": {
@@ -498,12 +497,12 @@
                 "value": "Bearer {{access_token}}"
               },
               {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
                 "key": "OData-Version",
                 "value": "4.0"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
               }
             ],
             "url": {
@@ -539,12 +538,12 @@
                 "value": "Bearer {{access_token}}"
               },
               {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
                 "key": "OData-Version",
                 "value": "4.0"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
               }
             ],
             "url": {
@@ -570,12 +569,12 @@
                 "value": "Bearer {{access_token}}"
               },
               {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
                 "key": "OData-Version",
                 "value": "4.0"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
               }
             ],
             "url": {
@@ -607,12 +606,12 @@
                 "value": "Bearer {{access_token}}"
               },
               {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
                 "key": "OData-Version",
                 "value": "4.0"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
               }
             ],
             "url": {
@@ -648,12 +647,12 @@
                 "value": "Bearer {{access_token}}"
               },
               {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
                 "key": "OData-Version",
                 "value": "4.0"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
               }
             ],
             "url": {
@@ -680,8 +679,261 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Business Events (Service Bus)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Parse Service Bus connection string and generate a SAS token",
+              "const connStr = pm.environment.get('servicebus_connection_string') || '';",
+              "if (!connStr) {",
+              "    console.error('servicebus_connection_string is not set in the environment.');",
+              "    return;",
+              "}",
+              "",
+              "// Extract each field with regex - handles ; or whitespace/newline separators",
+              "const endpointMatch = connStr.match(/Endpoint=([^\\s;]+)/i);",
+              "const keyNameMatch  = connStr.match(/SharedAccessKeyName=([^\\s;]+)/i);",
+              "const sakMatch      = connStr.match(/SharedAccessKey=([^\\s;]+)/i);",
+              "",
+              "const endpoint = endpointMatch ? endpointMatch[1].trim() : '';",
+              "const keyName  = keyNameMatch  ? keyNameMatch[1].trim()  : '';",
+              "const keyValue = sakMatch      ? sakMatch[1].trim()      : '';",
+              "",
+              "if (!endpoint || !keyName || !keyValue) {",
+              "    console.error('Could not parse connection string. endpoint=' + endpoint + ' keyName=' + keyName);",
+              "    return;",
+              "}",
+              "",
+              "// Extract hostname only: sb://ns.servicebus.windows.net/ -> ns.servicebus.windows.net",
+              "const hostname = endpoint.replace(/^sb:\\/\\//i, '').replace(/\\/+$/, '');",
+              "pm.environment.set('servicebus_namespace', hostname);",
+              "",
+              "// SAS token expiry: 1 hour from now",
+              "const expiry = Math.floor(Date.now() / 1000) + 3600;",
+              "const resourceUri = encodeURIComponent('https://' + hostname).toLowerCase();",
+              "const stringToSign = resourceUri + '\\n' + expiry;",
+              "",
+              "// Sign with CryptoJS (available in Postman sandbox)",
+              "const hash    = CryptoJS.HmacSHA256(stringToSign, keyValue);",
+              "const sig     = encodeURIComponent(CryptoJS.enc.Base64.stringify(hash));",
+              "const sasToken = `SharedAccessSignature sr=${resourceUri}&sig=${sig}&se=${expiry}&skn=${keyName}`;",
+              "pm.environment.set('servicebus_sas_token', sasToken);"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "Peek - TSIProductionOrderReleasedToMESBusinessEvent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 204) {",
+                  "    console.log('No messages available in subscription.');",
+                  "    pm.test('No messages (204 No Content)', () => pm.response.to.have.status(204));",
+                  "    return;",
+                  "}",
+                  "",
+                  "pm.test('Message peeked successfully (201 Created)', () => pm.response.to.have.status(201));",
+                  "",
+                  "// Parse broker metadata from response header",
+                  "const brokerHeader = pm.response.headers.get('BrokerProperties');",
+                  "if (!brokerHeader) {",
+                  "    console.warn('BrokerProperties header not found.');",
+                  "    return;",
+                  "}",
+                  "",
+                  "let broker;",
+                  "try { broker = JSON.parse(brokerHeader); }",
+                  "catch (e) { console.error('Failed to parse BrokerProperties:', e); return; }",
+                  "",
+                  "const messageId = broker.MessageId;",
+                  "const lockToken = broker.LockToken;",
+                  "const seqNum    = broker.SequenceNumber;",
+                  "",
+                  "console.log('MessageId:', messageId);",
+                  "console.log('SequenceNumber:', seqNum);",
+                  "console.log('LockToken:', lockToken);",
+                  "",
+                  "// Attempt to decode body as JSON, fall back to raw text",
+                  "let body;",
+                  "try { body = pm.response.json(); }",
+                  "catch (e) { body = pm.response.text(); }",
+                  "console.log('Message body:', JSON.stringify(body, null, 2));",
+                  "",
+                  "// Abandon the peek-lock so the message is returned to the subscription",
+                  "const namespace  = pm.environment.get('servicebus_namespace');",
+                  "const topicVar   = pm.environment.get('servicebus_topic_released');",
+                  "const subVar     = pm.environment.get('servicebus_sub_released');",
+                  "const sasToken   = pm.environment.get('servicebus_sas_token');",
+                  "",
+                  "if (!namespace || !topicVar || !subVar || !messageId || !lockToken) {",
+                  "    console.warn('Cannot abandon: missing namespace, topic, subscription, messageId, or lockToken.');",
+                  "    return;",
+                  "}",
+                  "",
+                  "const abandonUrl = `https://${namespace}/${topicVar}/subscriptions/${subVar}/messages/${messageId}/${lockToken}`;",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: abandonUrl,",
+                  "    method: 'PUT',",
+                  "    header: {",
+                  "        'Authorization': sasToken,",
+                  "        'Content-Length': '0'",
+                  "    }",
+                  "}, (err, res) => {",
+                  "    if (err) { console.error('Abandon failed:', err); return; }",
+                  "    console.log('Abandon response status:', res.status);",
+                  "    pm.test('Message abandoned (returned to subscription)', () => {",
+                  "        pm.expect(res.code).to.be.oneOf([200, 204]);",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{servicebus_sas_token}}"
+              }
+            ],
+            "url": {
+              "raw": "https://{{servicebus_namespace}}/{{servicebus_topic_released}}/subscriptions/{{servicebus_sub_released}}/messages/head?timeout=60",
+              "protocol": "https",
+              "host": [
+                "{{servicebus_namespace}}"
+              ],
+              "path": [
+                "{{servicebus_topic_released}}",
+                "subscriptions",
+                "{{servicebus_sub_released}}",
+                "messages",
+                "head"
+              ],
+              "query": [
+                {
+                  "key": "timeout",
+                  "value": "60"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Peek - TSIProductionOrderUpdatedMESEvent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 204) {",
+                  "    console.log('No messages available in subscription.');",
+                  "    pm.test('No messages (204 No Content)', () => pm.response.to.have.status(204));",
+                  "    return;",
+                  "}",
+                  "",
+                  "pm.test('Message peeked successfully (201 Created)', () => pm.response.to.have.status(201));",
+                  "",
+                  "// Parse broker metadata from response header",
+                  "const brokerHeader = pm.response.headers.get('BrokerProperties');",
+                  "if (!brokerHeader) {",
+                  "    console.warn('BrokerProperties header not found.');",
+                  "    return;",
+                  "}",
+                  "",
+                  "let broker;",
+                  "try { broker = JSON.parse(brokerHeader); }",
+                  "catch (e) { console.error('Failed to parse BrokerProperties:', e); return; }",
+                  "",
+                  "const messageId = broker.MessageId;",
+                  "const lockToken = broker.LockToken;",
+                  "const seqNum    = broker.SequenceNumber;",
+                  "",
+                  "console.log('MessageId:', messageId);",
+                  "console.log('SequenceNumber:', seqNum);",
+                  "console.log('LockToken:', lockToken);",
+                  "",
+                  "// Attempt to decode body as JSON, fall back to raw text",
+                  "let body;",
+                  "try { body = pm.response.json(); }",
+                  "catch (e) { body = pm.response.text(); }",
+                  "console.log('Message body:', JSON.stringify(body, null, 2));",
+                  "",
+                  "// Abandon the peek-lock so the message is returned to the subscription",
+                  "const namespace  = pm.environment.get('servicebus_namespace');",
+                  "const topicVar   = pm.environment.get('servicebus_topic_updated');",
+                  "const subVar     = pm.environment.get('servicebus_sub_updated');",
+                  "const sasToken   = pm.environment.get('servicebus_sas_token');",
+                  "",
+                  "if (!namespace || !topicVar || !subVar || !messageId || !lockToken) {",
+                  "    console.warn('Cannot abandon: missing namespace, topic, subscription, messageId, or lockToken.');",
+                  "    return;",
+                  "}",
+                  "",
+                  "const abandonUrl = `https://${namespace}/${topicVar}/subscriptions/${subVar}/messages/${messageId}/${lockToken}`;",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: abandonUrl,",
+                  "    method: 'PUT',",
+                  "    header: {",
+                  "        'Authorization': sasToken,",
+                  "        'Content-Length': '0'",
+                  "    }",
+                  "}, (err, res) => {",
+                  "    if (err) { console.error('Abandon failed:', err); return; }",
+                  "    console.log('Abandon response status:', res.status);",
+                  "    pm.test('Message abandoned (returned to subscription)', () => {",
+                  "        pm.expect(res.code).to.be.oneOf([200, 204]);",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{servicebus_sas_token}}"
+              }
+            ],
+            "url": {
+              "raw": "https://{{servicebus_namespace}}/{{servicebus_topic_updated}}/subscriptions/{{servicebus_sub_updated}}/messages/head?timeout=60",
+              "protocol": "https",
+              "host": [
+                "{{servicebus_namespace}}"
+              ],
+              "path": [
+                "{{servicebus_topic_updated}}",
+                "subscriptions",
+                "{{servicebus_sub_updated}}",
+                "messages",
+                "head"
+              ],
+              "query": [
+                {
+                  "key": "timeout",
+                  "value": "60"
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
-
   ],
   "variable": [
     {
