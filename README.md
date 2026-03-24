@@ -58,8 +58,35 @@ Provides requests for testing the Dynamics 365 Inventory Visibility Service API.
    - `client_id`: Application (client) ID from Azure AD app registration
    - `client_secret`: Client secret from Azure AD app registration
    - `company_id`: Company ID in D365 (e.g., "500")
+   - `base_url`: D365 environment base URL (e.g., `https://your-env.operations.dynamics.com`)
 
-4. Set the Service Bus variables for the **Business Events** folder:
+4. Set the test-data environment variables for your system:
+
+   | Variable | Description |
+   |---|---|
+   | `prod_order` | Production order number used across all MES requests |
+   | `item_number` | Item number used in picking list, OData, and other requests |
+   | `item_batch_number` | Batch number for the item being consumed |
+   | `license_plate_number` | License plate number for warehouse operations |
+   | `batch_number` | Batch number for inventory count journal |
+   | `disposition_code` | Batch disposition code (e.g. `QUARANTINE`) |
+   | `location` | Warehouse location |
+   | `warehouse` | Warehouse ID |
+   | `site` | Site ID |
+   | `source_location` | Source location for movement work |
+   | `destination_location` | Destination location for movement work |
+   | `production_warehouse_location_id` | Production warehouse location |
+   | `production_warehouse_id` | Production warehouse ID |
+   | `production_site_id` | Production site ID |
+   | `started_qty` | Quantity to start on the production order |
+   | `good_qty` | Good quantity for Report as Finished |
+   | `consumed_qty` | Quantity consumed per picking list line |
+   | `operation_num` | Route card operation number |
+   | `hours` | Hours for the route card operation |
+   | `counted_qty` | Counted quantity for inventory count journal |
+   | `count_date` | Count date for inventory count journal |
+
+5. Set the Service Bus variables for the **Business Events** folder:
 
    | Variable | Description |
    |---|---|
@@ -131,8 +158,8 @@ Provides requests for testing the Dynamics 365 Inventory Visibility Service API.
 
 1. Select the appropriate environment (Dev or UAT)
 2. Run the "Get OAuth Token" request to obtain an access token
-3. Adjust the collection variables as needed for your test data
-4. For MES requests, modify the raw body to include additional fields as needed
+3. Set the test-data environment variables for your scenario (production order, item number, quantities, etc.)
+4. For MES requests, modify the request body to include additional fields as needed
 5. For OData requests, adjust filter variables as needed
 
 ### MES Web Services (Synchronous)
@@ -140,7 +167,7 @@ Provides requests for testing the Dynamics 365 Inventory Visibility Service API.
 1. Select the appropriate environment (Dev or UAT)
 2. Run the "Get OAuth Token" request to obtain an access token
 3. Open the **MES Web Services** folder
-4. Set the relevant collection variables (`license_plate_number`, `source_location`, `destination_location`) for your scenario
+4. Set the `license_plate_number`, `source_location`, and `destination_location` environment variables for your scenario
 5. Run the **Create movement work** request; the response body contains the result synchronously — no polling required
 
 ### Business Events (Service Bus)
@@ -200,13 +227,13 @@ The **MES Web Services** folder provides synchronous request/response calls to t
 |---|---|---|
 | Create movement work | Creates a warehouse movement work order synchronously | `LicensePlate`, `SourceLocation`, `DestinationLocation`, `Quantity`, `ItemId`, `DataAreaId` |
 
-**Collection variables used:**
+**Environment variables used:**
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `license_plate_number` | `thy11` | License plate to move |
-| `source_location` | _(empty)_ | Origin warehouse location |
-| `destination_location` | _(empty)_ | Target warehouse location |
+| Variable | Purpose |
+|---|---|
+| `license_plate_number` | License plate to move |
+| `source_location` | Origin warehouse location |
+| `destination_location` | Target warehouse location |
 
 `DataAreaId` is sourced from the `company_id` environment variable. `Quantity` and `ItemId` are set directly in the request body.
 
@@ -215,7 +242,7 @@ The **MES Web Services** folder provides synchronous request/response calls to t
 The collection includes requests for all standard MES message types:
 - Start Production Order
 - Report as Finished
-- Material Consumption (Picking List)
+- **Material Consumption (Picking List)** — the request body contains the message content directly as readable JSON with `{{variable}}` tokens. Edit the body to adjust field values or add more objects to the `PickingListLines` array for multi-line consumption. A pre-request script resolves variables and wraps the body in the `SysMessageService` envelope before sending.
 - Time Used for Operation (Route Card)
 - End Production Order
 
@@ -223,23 +250,27 @@ The collection includes requests for all standard MES message types:
 
 The collection includes OData queries for TSI custom entities and standard D365 entities using $filter syntax:
 
-- **Get TSI_Items**: `?$filter=dataAreaId eq '{{company_id}}' and ItemId eq '{{item_id}}'`
-- **Get TSI_JmgJobs**: `?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}'`
-- **Get TSI_Labels**: `?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}'&$expand=Logos`
+- **Get TSI_Items**: `?$filter=dataAreaId eq '{{company_id}}' and ItemId eq '{{item_number}}'`
+- **Get TSI_Jobs**: `?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_order}}'`
+- **Get TSI_Labels**: `?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_order}}'&$expand=Logos`
 - **Get TSI_LabelLogos**: Retrieves all label logos data
-- **Get TSI_ProdBOMLines**: `?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}'`
+- **Get TSI_ProdBOMLines**: `?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_order}}'`
 - **Get WarehouseWorkLines**: `?$filter=dataAreaId eq '{{company_id}}' and WarehouseWorkStatus ne Microsoft.Dynamics.DataEntities.WHSWorkStatus'Closed' and WarehouseWorkStatus ne Microsoft.Dynamics.DataEntities.WHSWorkStatus'Cancelled'&$select=LicensePlateNumber,WarehouseWorkStatus,WarehouseWorkId,ItemNumber`
 - **Get ItemBatches**: `?$filter=dataAreaId eq '{{company_id}}' and BatchDispositionCode eq '{{disposition_code}}'&$select=ItemNumber,BatchNumber,BatchDispositionCode,ManufacturingDate,BatchExpirationDate`
 
-These endpoints use the same authentication as the MES requests. The variables `item_id`, `prod_id`, and `disposition_code` are available for customization.
+These endpoints use the same authentication as the MES requests. The variables `item_number`, `prod_order`, and `disposition_code` are set in the active environment.
 
 ### Variables
 
-The MES collection includes **70+ variables** covering all possible fields from the Microsoft documentation. Key categories:
+The MES collection uses two scopes for variables:
 
-- **Basic**: `prod_order`, `company_id`, dates, quantities
-- **Consumption Rules**: `bom_rule`, `route_rule`
-- **Journal Settings**: `journal_name`, `journal_description`, `posting_date`, `document_date`
+**Environment variables** (set per Dev/UAT environment) cover all test-data fields: production order numbers, item numbers, quantities, locations, and warehouse identifiers. This allows Dev and UAT to have completely independent test data without touching the collection.
+
+**Collection variables** cover behavioural configuration that is consistent across environments:
+
+- **Dates**: `started_date`, `report_date`, `consumption_date`, `ended_date` — set automatically by a collection-level pre-request script using today's date
+- **Consumption Rules**: `bom_rule`, `route_rule`, `automatic_bom_consumption_rule`, `automatic_route_consumption_rule`
+- **Journal Settings**: `journal_name_id`, `picking_list_journal_name_id`, `route_card_journal_name_id`, `automatic_bom_consumption_rule`, `end_job`, `end_picking_list`, `end_route_card`
 - **Inventory Dimensions**: 12 dimensions for tracking inventory attributes
 - **Product Attributes**: 10 custom product attributes
 - **Operation Details**: Priority, description, resource information, timing

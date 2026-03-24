@@ -248,6 +248,35 @@
         },
         {
           "name": "Material Consumption (Picking List)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// The body contains the PickingList message content as readable JSON with {{variable}} tokens.",
+                  "// Edit the body directly to change fields or add more lines to PickingListLines.",
+                  "// This script resolves variables, then wraps it in the SysMessageService envelope before sending.",
+                  "const rawBody = pm.request.body.raw;",
+                  "const resolved = pm.variables.replaceIn(rawBody);",
+                  "let msgObj;",
+                  "try {",
+                  "    msgObj = JSON.parse(resolved);",
+                  "} catch (e) {",
+                  "    console.error('Picking list body is not valid JSON after variable substitution:', e.message);",
+                  "    throw e;",
+                  "}",
+                  "const envelope = JSON.stringify({",
+                  "    _companyId: pm.variables.replaceIn('{{company_id}}'),",
+                  "    _messageQueue: 'JmgMES3P',",
+                  "    _messageType: 'ProdProductionOrderPickingList',",
+                  "    _messageContent: JSON.stringify(msgObj)",
+                  "}, null, 2);",
+                  "pm.request.body.update({ mode: 'raw', raw: envelope });"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -266,7 +295,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"ProdProductionOrderPickingList\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"PickingListLines\\\":[{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"ConsumptionBOMQuantity\\\":{{consumed_qty}},\\\"ConsumptionDate\\\":\\\"{{consumption_date}}\\\",\\\"ItemBatchNumber\\\":\\\"{{item_batch_number}}\\\",\\\"LicensePlateNumber\\\":\\\"{{license_plate_number}}\\\",\\\"ProductionWarehouseLocationId\\\":\\\"{{production_warehouse_location_id}}\\\"}]}\"\n}"
+              "raw": "{\n  \"ProductionOrderNumber\": \"{{prod_order}}\",\n  \"PickingListLines\": [\n    {\n      \"ItemNumber\": \"{{item_number}}\",\n      \"ConsumptionBOMQuantity\": {{consumed_qty}},\n      \"ConsumptionDate\": \"{{consumption_date}}\",\n      \"ItemBatchNumber\": \"{{item_batch_number}}\",\n      \"LicensePlateNumber\": \"{{license_plate_number}}\",\n      \"ProductionWarehouseLocationId\": \"{{production_warehouse_location_id}}\"\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/services/SysMessageServices/SysMessageService/SendMessage",
@@ -432,7 +461,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/TSI_Items?$filter=dataAreaId eq '{{company_id}}' and ItemId eq '{{item_id}}'",
+              "raw": "{{base_url}}/data/TSI_Items?$filter=dataAreaId eq '{{company_id}}' and ItemId eq '{{item_number}}'",
               "host": [
                 "{{base_url}}"
               ],
@@ -443,7 +472,7 @@
               "query": [
                 {
                   "key": "$filter",
-                  "value": "dataAreaId eq '{{company_id}}' and ItemId eq '{{item_id}}'"
+                  "value": "dataAreaId eq '{{company_id}}' and ItemId eq '{{item_number}}'"
                 }
               ]
             }
@@ -469,7 +498,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/TSI_Jobs?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}'",
+              "raw": "{{base_url}}/data/TSI_Jobs?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_order}}'",
               "host": [
                 "{{base_url}}"
               ],
@@ -480,7 +509,7 @@
               "query": [
                 {
                   "key": "$filter",
-                  "value": "dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}'"
+                  "value": "dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_order}}'"
                 }
               ]
             }
@@ -506,7 +535,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/TSI_Labels?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}' and (UDIUnit eq 'x1' or HasUDI eq 0)&$expand=Logos",
+              "raw": "{{base_url}}/data/TSI_Labels?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_order}}' and (UDIUnit eq 'x1' or HasUDI eq 0)&$expand=Logos",
               "host": [
                 "{{base_url}}"
               ],
@@ -517,7 +546,7 @@
               "query": [
                 {
                   "key": "$filter",
-                  "value": "dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}' and (UDIUnit eq 'x1' or HasUDI eq 0)"
+                  "value": "dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_order}}' and (UDIUnit eq 'x1' or HasUDI eq 0)"
                 },
                 {
                   "key": "$expand",
@@ -578,7 +607,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/TSI_ProdBOMLines?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}'",
+              "raw": "{{base_url}}/data/TSI_ProdBOMLines?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_order}}'",
               "host": [
                 "{{base_url}}"
               ],
@@ -589,7 +618,7 @@
               "query": [
                 {
                   "key": "$filter",
-                  "value": "dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_id}}'"
+                  "value": "dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_order}}'"
                 }
               ]
             }
@@ -937,48 +966,20 @@
   ],
   "variable": [
     {
-      "key": "prod_order",
-      "value": "10001115"
-    },
-    {
-      "key": "started_qty",
-      "value": "1"
-    },
-    {
       "key": "started_date",
-      "value": "2026-02-26"
-    },
-    {
-      "key": "item_number",
-      "value": "35357"
-    },
-    {
-      "key": "good_qty",
-      "value": "1"
+      "value": ""
     },
     {
       "key": "report_date",
-      "value": "2026-02-26"
-    },
-    {
-      "key": "consumed_qty",
-      "value": "1"
+      "value": ""
     },
     {
       "key": "consumption_date",
-      "value": "2026-02-26"
-    },
-    {
-      "key": "operation_num",
-      "value": "10"
-    },
-    {
-      "key": "hours",
-      "value": "2"
+      "value": ""
     },
     {
       "key": "ended_date",
-      "value": "2026-02-26"
+      "value": ""
     },
     {
       "key": "bom_rule",
@@ -998,11 +999,11 @@
     },
     {
       "key": "posting_date",
-      "value": "2026-02-26"
+      "value": ""
     },
     {
       "key": "document_date",
-      "value": "2026-02-26"
+      "value": ""
     },
     {
       "key": "voucher",
@@ -1105,27 +1106,11 @@
       "value": ""
     },
     {
-      "key": "batch_number",
-      "value": ""
-    },
-    {
       "key": "serial_number",
       "value": ""
     },
     {
       "key": "license_plate",
-      "value": ""
-    },
-    {
-      "key": "location",
-      "value": ""
-    },
-    {
-      "key": "warehouse",
-      "value": ""
-    },
-    {
-      "key": "site",
       "value": ""
     },
     {
@@ -1297,18 +1282,6 @@
       "value": ""
     },
     {
-      "key": "item_id",
-      "value": "A0001"
-    },
-    {
-      "key": "prod_id",
-      "value": "10000553"
-    },
-    {
-      "key": "disposition_code",
-      "value": "QUARANTINE"
-    },
-    {
       "key": "line_number",
       "value": ""
     },
@@ -1421,10 +1394,6 @@
       "value": ""
     },
     {
-      "key": "item_batch_number",
-      "value": "thy11"
-    },
-    {
       "key": "product_serial_number",
       "value": ""
     },
@@ -1433,40 +1402,113 @@
       "value": ""
     },
     {
-      "key": "license_plate_number",
-      "value": "thy11"
-    },
-    {
       "key": "inventory_status_id",
       "value": ""
     },
     {
-      "key": "production_warehouse_id",
-      "value": ""
+      "key": "prod_order",
+      "value": "",
+      "description": "Production order number. Override per environment."
     },
     {
-      "key": "production_site_id",
-      "value": ""
+      "key": "item_number",
+      "value": "",
+      "description": "Item number. Override per environment."
     },
     {
-      "key": "production_warehouse_location_id",
-      "value": ""
+      "key": "item_batch_number",
+      "value": "",
+      "description": "Item batch number. Override per environment."
+    },
+    {
+      "key": "license_plate_number",
+      "value": "",
+      "description": "License plate number. Override per environment."
+    },
+    {
+      "key": "batch_number",
+      "value": "",
+      "description": "Batch number. Override per environment."
+    },
+    {
+      "key": "disposition_code",
+      "value": "",
+      "description": "Batch disposition code. Override per environment."
+    },
+    {
+      "key": "location",
+      "value": "",
+      "description": "Warehouse location. Override per environment."
+    },
+    {
+      "key": "warehouse",
+      "value": "",
+      "description": "Warehouse ID. Override per environment."
+    },
+    {
+      "key": "site",
+      "value": "",
+      "description": "Site ID. Override per environment."
     },
     {
       "key": "source_location",
-      "value": ""
+      "value": "",
+      "description": "Source location for movement work. Override per environment."
     },
     {
       "key": "destination_location",
-      "value": ""
+      "value": "",
+      "description": "Destination location for movement work. Override per environment."
+    },
+    {
+      "key": "production_warehouse_location_id",
+      "value": "",
+      "description": "Production warehouse location ID. Override per environment."
+    },
+    {
+      "key": "production_warehouse_id",
+      "value": "",
+      "description": "Production warehouse ID. Override per environment."
+    },
+    {
+      "key": "production_site_id",
+      "value": "",
+      "description": "Production site ID. Override per environment."
+    },
+    {
+      "key": "started_qty",
+      "value": "",
+      "description": "Started quantity. Override per environment."
+    },
+    {
+      "key": "good_qty",
+      "value": "",
+      "description": "Good (finished) quantity. Override per environment."
+    },
+    {
+      "key": "consumed_qty",
+      "value": "",
+      "description": "Consumed quantity for picking list. Override per environment."
+    },
+    {
+      "key": "operation_num",
+      "value": "",
+      "description": "Operation number. Override per environment."
+    },
+    {
+      "key": "hours",
+      "value": "",
+      "description": "Hours for route card. Override per environment."
     },
     {
       "key": "counted_qty",
-      "value": "1"
+      "value": "",
+      "description": "Counted quantity for inventory count journal. Override per environment."
     },
     {
       "key": "count_date",
-      "value": ""
+      "value": "",
+      "description": "Count date for inventory count journal. Override per environment."
     }
   ]
 }
