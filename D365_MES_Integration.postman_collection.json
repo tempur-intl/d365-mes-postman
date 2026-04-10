@@ -190,7 +190,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"TSIUpdateBatchDisposition\",\n  \"_messageContent\": \"{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"BatchNumber\\\":\\\"{{item_batch_number}}\\\",\\\"DispositionCode\\\":\\\"{{disposition_code}}\\\"}\"\n}"
+              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"TSIUpdateBatchDisposition\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"BatchNumber\\\":\\\"{{item_batch_number}}\\\",\\\"DispositionCode\\\":\\\"{{disposition_code}}\\\"}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/services/SysMessageServices/SysMessageService/SendMessage",
