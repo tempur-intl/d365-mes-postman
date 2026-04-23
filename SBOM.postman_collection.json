@@ -2892,6 +2892,114 @@
       ]
     },
     {
+      "name": "ProdCalcTrans",
+      "description": "XDS policy: ProdCalcTrans table\nValidates that production cost calculation transaction entities do not expose items 18000-18499.\nQueries calculation transactions for items in the restricted range. XDS policy should filter out any cost calculation records for these restricted items.",
+      "item": [
+        {
+          "name": "ProdCalcTransBiEntities",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "OData-Version",
+                "value": "4.0"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/data/ProdCalcTransBiEntities?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_Resource}})&$top=1000",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "data",
+                "ProdCalcTransBiEntities"
+              ],
+              "query": [
+                {
+                  "key": "$filter",
+                  "value": "(dataAreaId eq '{{company_id}}') and ({{restrictedItems_Resource}})"
+                },
+                {
+                  "key": "$top",
+                  "value": "1000"
+                }
+              ]
+            },
+            "description": "GET ProdCalcTransBiEntities\nFilter: Resource in {{restrictedItems}}\nItem fields checked: Resource"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// XDS validation – ProdCalcTransBiEntities",
+                  "// Restricted range and test item lists are driven by collection variables:",
+                  "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
+                  "//   parentItem, phantomItem                 – BOM header items used in filters",
+                  "// Item fields checked: Resource",
+                  "",
+                  "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
+                  "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
+                  "var ITEM_FIELDS    = [\"Resource\"];",
+                  "",
+                  "function isRestricted(val) {",
+                  "    if (val === null || val === undefined || val === \"\") return false;",
+                  "    var n = parseInt(String(val).trim(), 10);",
+                  "    return !isNaN(n) && n >= RESTRICTED_MIN && n <= RESTRICTED_MAX;",
+                  "}",
+                  "",
+                  "var restrictedRangeLabel = \"(\" + RESTRICTED_MIN + \"-\" + RESTRICTED_MAX + \")\";",
+                  "",
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is valid OData JSON with value array\", function () {",
+                  "    var body = pm.response.json();",
+                  "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
+                  "});",
+                  "",
+                  "var records = (pm.response.json() || {}).value || [];",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "    var violations = [];",
+                  "    records.forEach(function (record, idx) {",
+                  "        ITEM_FIELDS.forEach(function (field) {",
+                  "            var val = record[field];",
+                  "            if (isRestricted(val)) {",
+                  "                violations.push(",
+                  "                    \"Record[\" + idx + \"].\" + field + \" = '\" + val + \"' is in restricted range \" + RESTRICTED_MIN + \"-\" + RESTRICTED_MAX",
+                  "                );",
+                  "            }",
+                  "        });",
+                  "    });",
+                  "    pm.expect(violations,",
+                  "        \"XDS LEAK – restricted items visible! \" + violations.join(\"; \")",
+                  "    ).to.be.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"Records returned – XDS has not blocked all data\", function () {",
+                  "    pm.expect(records.length,",
+                  "        \"Zero records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "    ).to.be.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "ReqTrans",
       "description": "XDS policy: ReqTrans table\nValidates that net/dynamic requirement entities do not expose items 18000-18499.\nMaster planning for 85375 demand generates requirements for direct components ['14244', '18963', '18959'] and (via phantom explosion) items in the restricted range 18000-18499 – the latter must be hidden by XDS.\n\nNOTE: ReqDynamicPlanProductionOrderScheduleEntity has OData=No and DMF=No in D365 – it cannot be tested via OData or DMF. This folder is intentionally empty; remove it if ReqTrans XDS coverage is not required.",
       "item": []
@@ -2918,7 +3026,8 @@
           "pm.collectionVariables.set('restrictedItems_ItemId',            buildFilter('ItemId'));",
           "pm.collectionVariables.set('restrictedItems_ProductNumber',     buildFilter('ProductNumber'));",
           "pm.collectionVariables.set('restrictedItems_TaxInventVATItemId', buildFilter('TaxInventVATItemId'));",
-          "pm.collectionVariables.set('restrictedItems_TSIItemId',           buildFilter('TSIItemId'));"
+          "pm.collectionVariables.set('restrictedItems_TSIItemId',           buildFilter('TSIItemId'));",
+          "pm.collectionVariables.set('restrictedItems_Resource',            buildFilter('Resource'));"
         ]
       }
     }
@@ -2990,6 +3099,12 @@
       "value": "",
       "type": "string",
       "description": "Auto-built by collection pre-request script from restrictedItems. OData or-clause for TSIItemId field."
+    },
+    {
+      "key": "restrictedItems_Resource",
+      "value": "",
+      "type": "string",
+      "description": "Auto-built by collection pre-request script from restrictedItems. OData or-clause for Resource field."
     }
   ]
 }

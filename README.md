@@ -26,7 +26,7 @@ Provides requests for interacting with the Dynamics 365 MES Integration API (mes
 Provides requests for validating that Dynamics 365 Extended Data Security (XDS) policies correctly restrict access to items in the range **18000–18499** across all protected OData data entities.
 
 **Features:**
-- **Seven table-scoped folders**: Requests are organised by the underlying D365 table targeted by the XDS policy (BOMVersion, BOM, InventJournalTrans, InventTrans, ProdBOM, ProdJournalBOM, ReqTrans)
+- **Seven table-scoped folders**: Requests are organised by the underlying D365 table targeted by the XDS policy (BOM, InventJournalTrans, InventTrans, ProdBOM, ProdCalcTrans, ProdJournalBOM, ReqTrans)
 - **Leak detection tests**: Each request asserts that no item in the restricted range appears in any item-related field of the response
 - **Access-verification tests**: Where test data is expected to exist, a separate assertion confirms that at least one record was returned — distinguishing a correctly filtered response from a broken connection or overly broad policy block
 - **Correct field names per entity**: Item fields are taken directly from the OData $metadata (e.g. `ItemNumber`, `ItemId`, `ComponentItemNumber`) rather than assumed
@@ -133,6 +133,7 @@ Provides requests for testing the Dynamics 365 Inventory Visibility Service API.
    | `restrictedItems_ProductNumber` | `ProductNumber` |
    | `restrictedItems_TaxInventVATItemId` | `TaxInventVATItemId` |
    | `restrictedItems_TSIItemId` | `TSIItemId` |
+   | `restrictedItems_Resource` | `Resource` |
 
 ### Inventory Visibility Service Collection
 
@@ -295,13 +296,13 @@ Each folder corresponds to one D365 table covered by the XDS policy:
 
 | Folder | Table | What is tested |
 |---|---|---|
-| BOMVersion | `BOMVersion` | BOM and formula version header entities filtered to items `85375` and `89002` |
-| BOM | `BOM` | BOM and formula line entities across the company |
+| BOM | `BOM` | BOM and formula line entities filtered to items `85375` and `89002`; checks `ItemNumber` |
 | InventJournalTrans | `InventJournalTrans` | All inventory journal transaction entities (adjustment, movement, transfer, counting) |
 | InventTrans | `InventTrans` | Inventory transaction entities (`ItemId` field) |
 | ProdBOM | `ProdBOM` | Production order BOM line entities; checks both `ItemNumber` (produced) and `ComponentItemNumber` (component) |
+| ProdCalcTrans | `ProdCalcTrans` | Production cost calculation transaction entities; checks `Resource` field |
 | ProdJournalBOM | `ProdJournalBOM` | Production picking list journal entries |
-| ReqTrans | `ReqTrans` | Dynamic plan production order schedule entity |
+| ReqTrans | `ReqTrans` | Dynamic plan production order schedule entity (folder intentionally empty — entity has OData=No in D365) |
 
 ### Test Assertions
 
