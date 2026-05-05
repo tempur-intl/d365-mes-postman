@@ -228,7 +228,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"ProdProductionOrderReportFinished\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"PrintLabel\\\":\\\"{{print_label}}\\\",\\\"ReportFinishedLines\\\":[{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"ReportedGoodQuantity\\\":{{good_qty}},\\\"ReportAsFinishedDate\\\":\\\"{{report_date}}\\\",\\\"AutomaticBOMConsumptionRule\\\":\\\"{{automatic_bom_consumption_rule}}\\\",\\\"AutomaticRouteConsumptionRule\\\":\\\"{{automatic_route_consumption_rule}}\\\",\\\"EndJob\\\":\\\"{{end_job}}\\\",\\\"EndPickingList\\\":\\\"{{end_picking_list}}\\\",\\\"EndRouteCard\\\":\\\"{{end_route_card}}\\\"}]}\"\n}"
+              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"ProdProductionOrderReportFinished\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"PrintLabel\\\":\\\"{{print_label}}\\\",\\\"ReportFinishedLines\\\":[{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"ReportedGoodQuantity\\\":{{good_qty}},\\\"ReportAsFinishedDate\\\":\\\"{{report_date}}\\\",\\\"AutomaticBOMConsumptionRule\\\":\\\"{{automatic_bom_consumption_rule}}\\\",\\\"AutomaticRouteConsumptionRule\\\":\\\"{{automatic_route_consumption_rule}}\\\",\\\"EndJob\\\":\\\"{{end_job}}\\\",\\\"EndPickingList\\\":\\\"{{end_picking_list}}\\\",\\\"EndRouteCard\\\":\\\"{{end_route_card}}\\\",\\\"AcceptError\\\":\\\"{{accept_error}}\\\",\\\"InventoryStatusId\\\":\\\"{{inventory_status_id}}\\\"}]}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/services/SysMessageServices/SysMessageService/SendMessage",
@@ -295,7 +295,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"ProductionOrderNumber\": \"{{prod_order}}\",\n  \"PickingListLines\": [\n    {\n      \"ItemNumber\": \"{{item_number}}\",\n      \"ConsumptionBOMQuantity\": {{consumed_qty}},\n      \"ConsumptionDate\": \"{{consumption_date}}\",\n      \"ItemBatchNumber\": \"{{item_batch_number}}\",\n      \"LicensePlateNumber\": \"{{license_plate_number}}\",\n      \"ProductionWarehouseLocationId\": \"{{production_warehouse_location_id}}\"\n    }\n  ]\n}"
+              "raw": "{\n  \"ProductionOrderNumber\": \"{{prod_order}}\",\n  \"PickingListLines\": [\n    {\n      \"ItemNumber\": \"{{item_number}}\",\n      \"ConsumptionBOMQuantity\": {{consumed_qty}},\n      \"ConsumptionDate\": \"{{consumption_date}}\",\n      \"ItemBatchNumber\": \"{{item_batch_number}}\",\n      \"LicensePlateNumber\": \"{{license_plate_number}}\",\n      \"ProductionWarehouseLocationId\": \"{{production_warehouse_location_id}}\",\n      \"InventoryLotId\": \"{{inventory_lot_id}}\"\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/services/SysMessageServices/SysMessageService/SendMessage",
