@@ -228,7 +228,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"ProdProductionOrderReportFinished\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"PrintLabel\\\":\\\"{{print_label}}\\\",\\\"ReportFinishedLines\\\":[{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"ReportedGoodQuantity\\\":{{good_qty}},\\\"ReportAsFinishedDate\\\":\\\"{{report_date}}\\\",\\\"AutomaticBOMConsumptionRule\\\":\\\"{{automatic_bom_consumption_rule}}\\\",\\\"AutomaticRouteConsumptionRule\\\":\\\"{{automatic_route_consumption_rule}}\\\",\\\"EndJob\\\":\\\"{{end_job}}\\\",\\\"EndPickingList\\\":\\\"{{end_picking_list}}\\\",\\\"EndRouteCard\\\":\\\"{{end_route_card}}\\\",\\\"AcceptError\\\":\\\"{{accept_error}}\\\",\\\"InventoryStatusId\\\":\\\"{{inventory_status_id}}\\\"}]}\"\n}"
+              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"ProdProductionOrderReportFinished\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"PrintLabel\\\":\\\"{{print_label}}\\\",\\\"ReportFinishedLines\\\":[{\\\"ItemNumber\\\":\\\"{{item_number}}\\\",\\\"ReportedGoodQuantity\\\":{{good_qty}},\\\"ReportAsFinishedDate\\\":\\\"{{report_date}}\\\",\\\"AutomaticBOMConsumptionRule\\\":\\\"{{automatic_bom_consumption_rule}}\\\",\\\"AutomaticRouteConsumptionRule\\\":\\\"{{automatic_route_consumption_rule}}\\\",\\\"EndJob\\\":\\\"{{end_job}}\\\",\\\"EndPickingList\\\":\\\"{{end_picking_list}}\\\",\\\"EndRouteCard\\\":\\\"{{end_route_card}}\\\",\\\"AcceptError\\\":\\\"{{accept_error}}\\\",\\\"InventoryStatusId\\\":\\\"{{inventory_status_id}}\\\",\\\"GenerateLicensePlate\\\":\\\"{{generate_license_plate}}\\\"}]}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/services/SysMessageServices/SysMessageService/SendMessage",
@@ -1347,7 +1347,8 @@
     },
     {
       "key": "inventory_lot_id",
-      "value": ""
+      "value": "",
+      "description": "Inventory lot ID for material consumption. Override per environment."
     },
     {
       "key": "base_value",
