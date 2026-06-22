@@ -3200,6 +3200,8 @@
                   "",
                   "var records = (pm.response.json() || {}).value || [];",
                   "",
+                  "var roleName = (records[0] && (records[0].SecurityRoleName || records[0].SecurityRoleIdentifier)) || '-SYSADMIN-';",
+                  "",
                   "var userIds = records",
                   "    .map(function (r) { return r.UserId || '(unknown)'; })",
                   "    .sort();",
@@ -3239,7 +3241,7 @@
                   "  <p class='sub'>Users assigned to -SYSADMIN- — these users bypass all XDS restrictions and can see items 18000–18499</p>",
                   "  {{#if users.length}}",
                   "  <div class='card'>",
-                  "    <h3>-SYSADMIN- ({{users.length}})</h3>",
+                  "    <h3>{{roleName}} ({{users.length}})</h3>",
                   "    <ul>{{#each users}}<li>{{this}}</li>{{/each}}</ul>",
                   "  </div>",
                   "  {{else}}",
@@ -3248,7 +3250,7 @@
                   "</body>",
                   "</html>`;",
                   "",
-                  "pm.visualizer.set(template, { users: userIds });"
+                  "pm.visualizer.set(template, { roleName: roleName, users: userIds });"
                 ],
                 "type": "text/javascript"
               }
