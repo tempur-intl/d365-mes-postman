@@ -3003,6 +3003,151 @@
       "name": "ReqTrans",
       "description": "XDS policy: ReqTrans table\nValidates that net/dynamic requirement entities do not expose items 18000-18499.\nMaster planning for 85375 demand generates requirements for direct components ['14244', '18963', '18959'] and (via phantom explosion) items in the restricted range 18000-18499 – the latter must be hidden by XDS.\n\nNOTE: ReqDynamicPlanProductionOrderScheduleEntity has OData=No and DMF=No in D365 – it cannot be tested via OData or DMF. This folder is intentionally empty; remove it if ReqTrans XDS coverage is not required.",
       "item": []
+    },
+    {
+      "name": "Access Control",
+      "description": "Access control audit for TSISBOM XDS policies.\n\nThese requests query SecurityUserRoles to identify users who have been manually excluded from the automatic TSISBOM XDS role assignments.\n\nBackground:\nThe TSISBOM XDS roles are assigned automatically to all users. A user whose assignment has been manually set to Disabled is exempted from the restriction and can see items 18000-18499 in full. This folder helps identify those exemptions.",
+      "item": [
+        {
+          "name": "Users excluded from TSISBOM XDS role assignment",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "OData-Version",
+                "value": "4.0"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/data/SecurityUserRoles?$filter= ( SecurityRoleIdentifier eq 'TSISBOM_BOMXDSRole' or SecurityRoleIdentifier eq 'TSISBOM_BOMCaclTransXDSRole' or SecurityRoleIdentifier eq 'TSISBOM_BOMVersionXDSRole' or SecurityRoleIdentifier eq 'TSISBOM_InventJournalTransXDSRole' or SecurityRoleIdentifier eq 'TSISBOM_InventTransXDSRole' or SecurityRoleIdentifier eq 'TSISBOM_ProdBOMXDSRole' or SecurityRoleIdentifier eq 'TSISBOM_ProdCaclTransXDSRole' or SecurityRoleIdentifier eq 'TSISBOM_ProdJournalBOMXDSRole' or SecurityRoleIdentifier eq 'TSISBOM_ReqTransXDSRole' or SecurityRoleIdentifier eq 'TSISBOM_SysMessageXDSRole' ) and AssignmentMode eq Microsoft.Dynamics.DataEntities.RoleAssignmentMode'Manual' and AssignmentStatus eq Microsoft.Dynamics.DataEntities.RoleAssignmentStatus'Disabled'",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "data",
+                "SecurityUserRoles"
+              ],
+              "query": [
+                {
+                  "key": "$filter",
+                  "value": " ( SecurityRoleIdentifier eq 'TSISBOM_BOMXDSRole' or SecurityRoleIdentifier eq 'TSISBOM_BOMCaclTransXDSRole' or SecurityRoleIdentifier eq 'TSISBOM_BOMVersionXDSRole' or SecurityRoleIdentifier eq 'TSISBOM_InventJournalTransXDSRole' or SecurityRoleIdentifier eq 'TSISBOM_InventTransXDSRole' or SecurityRoleIdentifier eq 'TSISBOM_ProdBOMXDSRole' or SecurityRoleIdentifier eq 'TSISBOM_ProdCaclTransXDSRole' or SecurityRoleIdentifier eq 'TSISBOM_ProdJournalBOMXDSRole' or SecurityRoleIdentifier eq 'TSISBOM_ReqTransXDSRole' or SecurityRoleIdentifier eq 'TSISBOM_SysMessageXDSRole' ) and AssignmentMode eq Microsoft.Dynamics.DataEntities.RoleAssignmentMode'Manual' and AssignmentStatus eq Microsoft.Dynamics.DataEntities.RoleAssignmentStatus'Disabled'"
+                }
+              ]
+            },
+            "description": "GET SecurityUserRoles\nReturns users who have been manually excluded (AssignmentMode=Manual, AssignmentStatus=Disabled) from the automatic TSISBOM XDS role assignments.\nThese users bypass the XDS restriction and can see items in the restricted range 18000-18499.\n\nRoles checked:\n  TSISBOM_BOMXDSRole\n  TSISBOM_BOMCaclTransXDSRole\n  TSISBOM_BOMVersionXDSRole\n  TSISBOM_InventJournalTransXDSRole\n  TSISBOM_InventTransXDSRole\n  TSISBOM_ProdBOMXDSRole\n  TSISBOM_ProdCaclTransXDSRole\n  TSISBOM_ProdJournalBOMXDSRole\n  TSISBOM_ReqTransXDSRole\n  TSISBOM_SysMessageXDSRole"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Access control audit – SecurityUserRoles",
+                  "// Returns users whose automatic TSISBOM XDS role assignment has been manually disabled.",
+                  "// These users can see items in the restricted range 18000-18499.",
+                  "",
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is valid OData JSON with value array\", function () {",
+                  "    var body = pm.response.json();",
+                  "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
+                  "});",
+                  "",
+                  "var records = (pm.response.json() || {}).value || [];",
+                  "",
+                  "// Log a summary of every exempted user-role pair to the Postman console.",
+                  "if (records.length === 0) {",
+                  "    console.log(\"ACCESS CONTROL: No users are currently exempted from TSISBOM XDS role assignments.\");",
+                  "} else {",
+                  "    console.warn(\"ACCESS CONTROL: \" + records.length + \" user-role exemption(s) found – these users can see restricted items 18000-18499:\");",
+                  "    records.forEach(function (r, idx) {",
+                  "        console.warn(",
+                  "            \"  [\" + (idx + 1) + \"] UserId=\" + (r.UserId || r.NetworkDomain || \"(unknown)\") +",
+                  "            \"  Role=\" + (r.SecurityRoleIdentifier || \"(unknown)\") +",
+                  "            \"  AssignmentMode=\" + (r.AssignmentMode || \"-\") +",
+                  "            \"  AssignmentStatus=\" + (r.AssignmentStatus || \"-\")",
+                  "        );",
+                  "    });",
+                  "}",
+                  "",
+                  "pm.test(\"ACCESS CONTROL – \" + records.length + \" user(s) exempted from TSISBOM XDS restrictions\", function () {",
+                  "    // This test always passes – it surfaces the count in the test results panel.",
+                  "    // Review the Postman console for the full list of exempted users.",
+                  "    pm.expect(true).to.be.true;",
+                  "});",
+                  "",
+                  "// ---------------------------------------------------------------------------",
+                  "// Visualizer – one column per SecurityRoleName, listing UserId values.",
+                  "// ---------------------------------------------------------------------------",
+                  "(function buildVisualizer() {",
+                  "    // Group by SecurityRoleName, collect UserId per group.",
+                  "    var byRole = {};",
+                  "    records.forEach(function (rec) {",
+                  "        var roleName = rec.SecurityRoleName || rec.SecurityRoleIdentifier || '(unknown)';",
+                  "        if (!byRole[roleName]) { byRole[roleName] = []; }",
+                  "        byRole[roleName].push(rec.UserId || '(unknown)');",
+                  "    });",
+                  "",
+                  "    var roleNames = Object.keys(byRole).sort();",
+                  "",
+                  "    var template = `",
+                  "    <html>",
+                  "    <head>",
+                  "    <style>",
+                  "      body  { font-family: sans-serif; font-size: 13px; margin: 12px; background: #f9f9f9; }",
+                  "      h2    { margin: 0 0 12px; font-size: 15px; color: #333; }",
+                  "      p.sub { margin: -8px 0 14px; font-size: 11px; color: #777; }",
+                  "      .grid { display: flex; flex-wrap: wrap; gap: 10px; }",
+                  "      .col  { background: #fff; border: 1px solid #ddd; border-radius: 6px;",
+                  "              padding: 10px 14px; min-width: 180px; flex: 1 1 180px; }",
+                  "      .col h3 { margin: 0 0 8px; font-size: 13px; color: #333;",
+                  "                border-bottom: 1px solid #eee; padding-bottom: 6px; }",
+                  "      ul    { margin: 0; padding: 0 0 0 16px; }",
+                  "      li    { margin: 4px 0; color: #333; }",
+                  "    </style>",
+                  "    </head>",
+                  "    <body>",
+                  "      <h2>TSISBOM XDS Role Exemptions</h2>",
+                  "      <p class='sub'>Users with AssignmentMode=Manual, AssignmentStatus=Disabled — these users can see items 18000–18499</p>",
+                  "      {{#if roles.length}}",
+                  "      <div class='grid'>",
+                  "        {{#each roles}}",
+                  "        <div class='col'>",
+                  "          <h3>{{name}}</h3>",
+                  "          <ul>{{#each users}}<li>{{this}}</li>{{/each}}</ul>",
+                  "        </div>",
+                  "        {{/each}}",
+                  "      </div>",
+                  "      {{else}}",
+                  "      <p style='color:#27ae60;font-weight:bold;'>No exemptions found – all users are subject to XDS restrictions.</p>",
+                  "      {{/if}}",
+                  "    </body>",
+                  "    </html>`,",
+                  "",
+                  "    vizData = {",
+                  "        roles: roleNames.map(function (name) {",
+                  "            return { name: name, users: byRole[name] };",
+                  "        })",
+                  "    };",
+                  "",
+                  "    pm.visualizer.set(template, vizData);",
+                  "}());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "event": [
