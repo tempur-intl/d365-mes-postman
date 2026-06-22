@@ -3098,6 +3098,7 @@
                   "    });",
                   "",
                   "    var roleNames = Object.keys(byRole).sort();",
+                  "    roleNames.forEach(function (name) { byRole[name].sort(); });",
                   "",
                   "    var template = `",
                   "    <html>",
