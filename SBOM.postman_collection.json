@@ -3123,7 +3123,7 @@
                   "      <div class='grid'>",
                   "        {{#each roles}}",
                   "        <div class='col'>",
-                  "          <h3>{{name}}</h3>",
+                  "          <h3>{{name}} ({{users.length}})</h3>",
                   "          <ul>{{#each users}}<li>{{this}}</li>{{/each}}</ul>",
                   "        </div>",
                   "        {{/each}}",
@@ -3142,6 +3142,113 @@
                   "",
                   "    pm.visualizer.set(template, vizData);",
                   "}());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "System administrators",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "OData-Version",
+                "value": "4.0"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/data/SecurityUserRoles?$filter= SecurityRoleIdentifier eq '-SYSADMIN-'",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "data",
+                "SecurityUserRoles"
+              ],
+              "query": [
+                {
+                  "key": "$filter",
+                  "value": " SecurityRoleIdentifier eq '-SYSADMIN-'"
+                }
+              ]
+            },
+            "description": "GET SecurityUserRoles\nReturns all users assigned to the System Administrator role (-SYSADMIN-).\nSystem administrators bypass all XDS policies and can see items in the restricted range 18000-18499."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is valid OData JSON with value array\", function () {",
+                  "    var body = pm.response.json();",
+                  "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
+                  "});",
+                  "",
+                  "var records = (pm.response.json() || {}).value || [];",
+                  "",
+                  "var userIds = records",
+                  "    .map(function (r) { return r.UserId || '(unknown)'; })",
+                  "    .sort();",
+                  "",
+                  "if (userIds.length === 0) {",
+                  "    console.log(\"SYSADMIN: No users found with the System Administrator role.\");",
+                  "} else {",
+                  "    console.warn(\"SYSADMIN: \" + userIds.length + \" system administrator(s) – these users bypass all XDS restrictions:\");",
+                  "    userIds.forEach(function (id, i) { console.warn(\"  [\" + (i + 1) + \"] \" + id); });",
+                  "}",
+                  "",
+                  "pm.test(\"SYSADMIN – \" + userIds.length + \" system administrator(s) found\", function () {",
+                  "    pm.expect(true).to.be.true;",
+                  "});",
+                  "",
+                  "// ---------------------------------------------------------------------------",
+                  "// Visualizer – sorted list of system administrator UserId values.",
+                  "// ---------------------------------------------------------------------------",
+                  "var template = `",
+                  "<html>",
+                  "<head>",
+                  "<style>",
+                  "  body { font-family: sans-serif; font-size: 13px; margin: 12px; background: #f9f9f9; }",
+                  "  h2   { margin: 0 0 6px; font-size: 15px; color: #333; }",
+                  "  p.sub { margin: 0 0 14px; font-size: 11px; color: #777; }",
+                  "  .card { background: #fff; border: 1px solid #ddd; border-radius: 6px;",
+                  "          padding: 10px 14px; display: inline-block; min-width: 220px; }",
+                  "  .card h3 { margin: 0 0 8px; font-size: 13px; color: #333;",
+                  "             border-bottom: 1px solid #eee; padding-bottom: 6px; }",
+                  "  ul   { margin: 0; padding: 0 0 0 16px; }",
+                  "  li   { margin: 4px 0; color: #333; }",
+                  "  .empty { color: #27ae60; font-weight: bold; }",
+                  "</style>",
+                  "</head>",
+                  "<body>",
+                  "  <h2>System Administrators</h2>",
+                  "  <p class='sub'>Users assigned to -SYSADMIN- — these users bypass all XDS restrictions and can see items 18000–18499</p>",
+                  "  {{#if users.length}}",
+                  "  <div class='card'>",
+                  "    <h3>-SYSADMIN- ({{users.length}})</h3>",
+                  "    <ul>{{#each users}}<li>{{this}}</li>{{/each}}</ul>",
+                  "  </div>",
+                  "  {{else}}",
+                  "  <p class='empty'>No system administrators found.</p>",
+                  "  {{/if}}",
+                  "</body>",
+                  "</html>`;",
+                  "",
+                  "pm.visualizer.set(template, { users: userIds });"
                 ],
                 "type": "text/javascript"
               }
