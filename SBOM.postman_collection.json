@@ -2333,6 +2333,210 @@
               }
             }
           ]
+        },
+        {
+          "name": "AtlasInventTrans",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "OData-Version",
+                "value": "4.0"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/data/AtlasInventTrans?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})&$top=1000",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "data",
+                "AtlasInventTrans"
+              ],
+              "query": [
+                {
+                  "key": "$filter",
+                  "value": "(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})"
+                },
+                {
+                  "key": "$top",
+                  "value": "1000"
+                }
+              ]
+            },
+            "description": "GET AtlasInventTrans\nFilter: ItemId in {{restrictedItems}}\nItem fields checked: ItemId"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// XDS validation \u2013 AtlasInventTrans",
+                  "// Restricted range and test item lists are driven by collection variables:",
+                  "//   restrictedRangeMin, restrictedRangeMax  \u2013 define the hidden item ID range",
+                  "//   parentItem, phantomItem                 \u2013 BOM header items used in filters",
+                  "// Item fields checked: ItemId",
+                  "",
+                  "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
+                  "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
+                  "var ITEM_FIELDS    = [\"ItemId\"];",
+                  "",
+                  "function isRestricted(val) {",
+                  "    if (val === null || val === undefined || val === \"\") return false;",
+                  "    var n = parseInt(String(val).trim(), 10);",
+                  "    return !isNaN(n) && n >= RESTRICTED_MIN && n <= RESTRICTED_MAX;",
+                  "}",
+                  "",
+                  "var restrictedRangeLabel = \"(\" + RESTRICTED_MIN + \"-\" + RESTRICTED_MAX + \")\";",
+                  "",
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is valid OData JSON with value array\", function () {",
+                  "    var body = pm.response.json();",
+                  "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
+                  "});",
+                  "",
+                  "var records = (pm.response.json() || {}).value || [];",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "    var violations = [];",
+                  "    records.forEach(function (record, idx) {",
+                  "        ITEM_FIELDS.forEach(function (field) {",
+                  "            var val = record[field];",
+                  "            if (isRestricted(val)) {",
+                  "                violations.push(",
+                  "                    \"Record[\" + idx + \"].\" + field + \" = '\" + val + \"' is in restricted range \" + RESTRICTED_MIN + \"-\" + RESTRICTED_MAX",
+                  "                );",
+                  "            }",
+                  "        });",
+                  "    });",
+                  "    pm.expect(violations,",
+                  "        \"XDS LEAK \u2013 restricted items visible! \" + violations.join(\"; \")",
+                  "    ).to.be.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"Records returned \u2013 XDS has not blocked all data\", function () {",
+                  "    pm.expect(records.length,",
+                  "        \"Zero records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "    ).to.be.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "TSIInventTransCollection",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "OData-Version",
+                "value": "4.0"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/data/TSIInventTransCollection?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})&$top=1000",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "data",
+                "TSIInventTransCollection"
+              ],
+              "query": [
+                {
+                  "key": "$filter",
+                  "value": "(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})"
+                },
+                {
+                  "key": "$top",
+                  "value": "1000"
+                }
+              ]
+            },
+            "description": "GET TSIInventTransCollection\nFilter: ItemId in {{restrictedItems}}\nItem fields checked: ItemId"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// XDS validation \u2013 TSIInventTransCollection",
+                  "// Restricted range and test item lists are driven by collection variables:",
+                  "//   restrictedRangeMin, restrictedRangeMax  \u2013 define the hidden item ID range",
+                  "//   parentItem, phantomItem                 \u2013 BOM header items used in filters",
+                  "// Item fields checked: ItemId",
+                  "",
+                  "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
+                  "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
+                  "var ITEM_FIELDS    = [\"ItemId\"];",
+                  "",
+                  "function isRestricted(val) {",
+                  "    if (val === null || val === undefined || val === \"\") return false;",
+                  "    var n = parseInt(String(val).trim(), 10);",
+                  "    return !isNaN(n) && n >= RESTRICTED_MIN && n <= RESTRICTED_MAX;",
+                  "}",
+                  "",
+                  "var restrictedRangeLabel = \"(\" + RESTRICTED_MIN + \"-\" + RESTRICTED_MAX + \")\";",
+                  "",
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is valid OData JSON with value array\", function () {",
+                  "    var body = pm.response.json();",
+                  "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
+                  "});",
+                  "",
+                  "var records = (pm.response.json() || {}).value || [];",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "    var violations = [];",
+                  "    records.forEach(function (record, idx) {",
+                  "        ITEM_FIELDS.forEach(function (field) {",
+                  "            var val = record[field];",
+                  "            if (isRestricted(val)) {",
+                  "                violations.push(",
+                  "                    \"Record[\" + idx + \"].\" + field + \" = '\" + val + \"' is in restricted range \" + RESTRICTED_MIN + \"-\" + RESTRICTED_MAX",
+                  "                );",
+                  "            }",
+                  "        });",
+                  "    });",
+                  "    pm.expect(violations,",
+                  "        \"XDS LEAK \u2013 restricted items visible! \" + violations.join(\"; \")",
+                  "    ).to.be.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"Records returned \u2013 XDS has not blocked all data\", function () {",
+                  "    pm.expect(records.length,",
+                  "        \"Zero records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "    ).to.be.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
