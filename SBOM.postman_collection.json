@@ -2850,6 +2850,109 @@
             }
           ]
         }
+        ,
+        {
+          "name": "RobExProdBOM",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "OData-Version",
+                "value": "4.0"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/data/RobExProdBOM?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})&$top=1000",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "data",
+                "RobExProdBOM"
+              ],
+              "query": [
+                {
+                  "key": "$filter",
+                  "value": "(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})"
+                },
+                {
+                  "key": "$top",
+                  "value": "1000"
+                }
+              ]
+            },
+            "description": "GET RobExProdBOM\nFilter: ItemId in {{restrictedItems}}\nItem fields checked: ItemId"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// XDS validation – RobExProdBOM",
+                  "// Restricted range and test item lists are driven by collection variables:",
+                  "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
+                  "//   parentItem, phantomItem                 – BOM header items used in filters",
+                  "// Item fields checked: ItemId",
+                  "",
+                  "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
+                  "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
+                  "var ITEM_FIELDS    = [\"ItemId\"];",
+                  "",
+                  "function isRestricted(val) {",
+                  "    if (val === null || val === undefined || val === \"\") return false;",
+                  "    var n = parseInt(String(val).trim(), 10);",
+                  "    return !isNaN(n) && n >= RESTRICTED_MIN && n <= RESTRICTED_MAX;",
+                  "}",
+                  "",
+                  "var restrictedRangeLabel = \"(\" + RESTRICTED_MIN + \"-\" + RESTRICTED_MAX + \")\";",
+                  "",
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is valid OData JSON with value array\", function () {",
+                  "    var body = pm.response.json();",
+                  "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
+                  "});",
+                  "",
+                  "var records = (pm.response.json() || {}).value || [];",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "    var violations = [];",
+                  "    records.forEach(function (record, idx) {",
+                  "        ITEM_FIELDS.forEach(function (field) {",
+                  "            var val = record[field];",
+                  "            if (isRestricted(val)) {",
+                  "                violations.push(",
+                  "                    \"Record[\" + idx + \"].\" + field + \" = '\" + val + \"' is in restricted range \" + RESTRICTED_MIN + \"-\" + RESTRICTED_MAX",
+                  "                );",
+                  "            }",
+                  "        });",
+                  "    });",
+                  "    pm.expect(violations,",
+                  "        \"XDS LEAK – restricted items visible! \" + violations.join(\"; \")",
+                  "    ).to.be.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"Records returned – XDS has not blocked all data\", function () {",
+                  "    pm.expect(records.length,",
+                  "        \"Zero records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "    ).to.be.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
       ]
     },
     {
@@ -3274,8 +3377,111 @@
     },
     {
       "name": "ReqTrans",
-      "description": "XDS policy: ReqTrans table\nValidates that net/dynamic requirement entities do not expose items 18000-18499.\nMaster planning for 85375 demand generates requirements for direct components ['14244', '18963', '18959'] and (via phantom explosion) items in the restricted range 18000-18499 – the latter must be hidden by XDS.\n\nNOTE: ReqDynamicPlanProductionOrderScheduleEntity has OData=No and DMF=No in D365 – it cannot be tested via OData or DMF. This folder is intentionally empty; remove it if ReqTrans XDS coverage is not required.",
-      "item": []
+      "description": "XDS policy: ReqTrans table\nValidates that net/dynamic requirement entities do not expose items 18000-18499.\nMaster planning for 85375 demand generates requirements for direct components ['14244', '18963', '18959'] and (via phantom explosion) items in the restricted range 18000-18499 – the latter must be hidden by XDS.\n\nNOTE: ReqDynamicPlanProductionOrderScheduleEntity has OData=No and DMF=No in D365 – it cannot be tested via OData or DMF.",
+      "item": [
+        {
+          "name": "RobExReqTrans",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "OData-Version",
+                "value": "4.0"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/data/RobExReqTrans?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})&$top=1000",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "data",
+                "RobExReqTrans"
+              ],
+              "query": [
+                {
+                  "key": "$filter",
+                  "value": "(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})"
+                },
+                {
+                  "key": "$top",
+                  "value": "1000"
+                }
+              ]
+            },
+            "description": "GET RobExReqTrans\nFilter: ItemId in {{restrictedItems}}\nItem fields checked: ItemId"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// XDS validation – RobExReqTrans",
+                  "// Restricted range and test item lists are driven by collection variables:",
+                  "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
+                  "//   parentItem, phantomItem                 – BOM header items used in filters",
+                  "// Item fields checked: ItemId",
+                  "",
+                  "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
+                  "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
+                  "var ITEM_FIELDS    = [\"ItemId\"];",
+                  "",
+                  "function isRestricted(val) {",
+                  "    if (val === null || val === undefined || val === \"\") return false;",
+                  "    var n = parseInt(String(val).trim(), 10);",
+                  "    return !isNaN(n) && n >= RESTRICTED_MIN && n <= RESTRICTED_MAX;",
+                  "}",
+                  "",
+                  "var restrictedRangeLabel = \"(\" + RESTRICTED_MIN + \"-\" + RESTRICTED_MAX + \")\";",
+                  "",
+                  "pm.test(\"Status 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is valid OData JSON with value array\", function () {",
+                  "    var body = pm.response.json();",
+                  "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
+                  "});",
+                  "",
+                  "var records = (pm.response.json() || {}).value || [];",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "    var violations = [];",
+                  "    records.forEach(function (record, idx) {",
+                  "        ITEM_FIELDS.forEach(function (field) {",
+                  "            var val = record[field];",
+                  "            if (isRestricted(val)) {",
+                  "                violations.push(",
+                  "                    \"Record[\" + idx + \"].\" + field + \" = '\" + val + \"' is in restricted range \" + RESTRICTED_MIN + \"-\" + RESTRICTED_MAX",
+                  "                );",
+                  "            }",
+                  "        });",
+                  "    });",
+                  "    pm.expect(violations,",
+                  "        \"XDS LEAK – restricted items visible! \" + violations.join(\"; \")",
+                  "    ).to.be.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"Records returned – XDS has not blocked all data\", function () {",
+                  "    pm.expect(records.length,",
+                  "        \"Zero records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "    ).to.be.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
     },
     {
       "name": "Access Control",
@@ -3344,7 +3550,7 @@
                   "    console.warn(\"ACCESS CONTROL: \" + records.length + \" user-role exemption(s) found – these users can see restricted items 18000-18499:\");",
                   "    records.forEach(function (r, idx) {",
                   "        console.warn(",
-                  "            \"  [\" + (idx + 1) + \"] UserID=\" + (r.UserID || r.NetworkDomain || \"(unknown)\") +",
+                  "            \"  [\" + (idx + 1) + \"] UserID=\" + (r.UserId || r.NetworkDomain || \"(unknown)\") +",
                   "            \"  Role=\" + (r.SecurityRoleIdentifier || \"(unknown)\") +",
                   "            \"  AssignmentMode=\" + (r.AssignmentMode || \"-\") +",
                   "            \"  AssignmentStatus=\" + (r.AssignmentStatus || \"-\")",
@@ -3367,7 +3573,7 @@
                   "    records.forEach(function (rec) {",
                   "        var roleName = rec.SecurityRoleName || rec.SecurityRoleIdentifier || '(unknown)';",
                   "        if (!byRole[roleName]) { byRole[roleName] = []; }",
-                  "        byRole[roleName].push(rec.UserID || '(unknown)');",
+                  "        byRole[roleName].push(rec.UserId || '(unknown)');",
                   "    });",
                   "",
                   "    var roleNames = Object.keys(byRole).sort();",
@@ -3476,7 +3682,7 @@
                   "var roleName = (records[0] && (records[0].SecurityRoleName || records[0].SecurityRoleIdentifier)) || '-SYSADMIN-';",
                   "",
                   "var userIds = records",
-                  "    .map(function (r) { return r.UserID || '(unknown)'; })",
+                  "    .map(function (r) { return r.UserId || '(unknown)'; })",
                   "    .sort();",
                   "",
                   "if (userIds.length === 0) {",
@@ -3491,7 +3697,7 @@
                   "});",
                   "",
                   "// ---------------------------------------------------------------------------",
-                  "// Visualizer – sorted list of system administrator UserID values.",
+                  "// Visualizer – sorted list of system administrator UserId values.",
                   "// ---------------------------------------------------------------------------",
                   "var template = `",
                   "<html>",
