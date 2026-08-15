@@ -817,7 +817,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/EDIInventInventoryAdjustmentJournalEntries?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=1000",
+              "raw": "{{base_url}}/data/EDIInventInventoryAdjustmentJournalEntries?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -832,11 +832,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET EDIInventInventoryAdjustmentJournalEntries\nFilter: ItemNumber in {{restrictedItems}}\nItem fields checked: ItemNumber"
+            "description": "GET EDIInventInventoryAdjustmentJournalEntries\nFilter: ItemNumber in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: ItemNumber"
           },
           "event": [
             {
@@ -847,7 +851,9 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
-                  "// Item fields checked: ItemNumber\\n// NOTE: Data for EDIInventInventoryAdjustmentJournalEntries may legitimately be absent in some environments.",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top truncation hiding a leak.",
+                  "// Item fields checked: ItemNumber",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
                   "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
@@ -865,14 +871,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -889,11 +902,32 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "// Data-existence assertion skipped for this entity",
-                  "// (records may legitimately be absent depending on test data scope)",
-                  "if (records.length === 0) {",
-                  "    console.warn(\"[EDIInventInventoryAdjustmentJournalEntries] Zero records returned. Ensure test data covers this entity or remove it from the run.\");",
-                  "}"
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_ItemNumber') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/EDIInventInventoryAdjustmentJournalEntries?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "});"
                 ],
                 "type": "text/javascript"
               }
@@ -919,7 +953,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/EDIInventoryTransferJournalLines?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=1000",
+              "raw": "{{base_url}}/data/EDIInventoryTransferJournalLines?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -934,11 +968,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET EDIInventoryTransferJournalLines\nFilter: specific restricted items from {{restrictedItems}} (ge/le not supported on this field; in operator also unsupported in D365 OData)\nItem fields checked: ItemNumber"
+            "description": "GET EDIInventoryTransferJournalLines\nFilter: ItemNumber in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: ItemNumber"
           },
           "event": [
             {
@@ -949,7 +987,9 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
-                  "// Item fields checked: ItemNumber\\n// NOTE: Data for EDIInventoryTransferJournalLines may legitimately be absent in some environments.",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top truncation hiding a leak.",
+                  "// Item fields checked: ItemNumber",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
                   "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
@@ -967,14 +1007,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -991,11 +1038,32 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "// Data-existence assertion skipped for this entity",
-                  "// (records may legitimately be absent depending on test data scope)",
-                  "if (records.length === 0) {",
-                  "    console.warn(\"[EDIInventoryTransferJournalLines] Zero records returned. Ensure test data covers this entity or remove it from the run.\");",
-                  "}"
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_ItemNumber') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/EDIInventoryTransferJournalLines?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "});"
                 ],
                 "type": "text/javascript"
               }
@@ -1021,7 +1089,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/AssetMaintenanceWorkOrderLineProductJournals?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ProductNumber}})&$top=1000",
+              "raw": "{{base_url}}/data/AssetMaintenanceWorkOrderLineProductJournals?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ProductNumber}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -1036,11 +1104,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET AssetMaintenanceWorkOrderLineProductJournals\nFilter: ProductNumber in {{restrictedItems}}\nItem fields checked: ProductNumber"
+            "description": "GET AssetMaintenanceWorkOrderLineProductJournals\nFilter: ProductNumber in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: ProductNumber"
           },
           "event": [
             {
@@ -1051,7 +1123,9 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
-                  "// Item fields checked: ProductNumber\\n// NOTE: Data for AssetMaintenanceWorkOrderLineProductJournals may legitimately be absent in some environments.",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top truncation hiding a leak.",
+                  "// Item fields checked: ProductNumber",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
                   "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
@@ -1069,14 +1143,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -1093,11 +1174,32 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "// Data-existence assertion skipped for this entity",
-                  "// (records may legitimately be absent depending on test data scope)",
-                  "if (records.length === 0) {",
-                  "    console.warn(\"[AssetMaintenanceWorkOrderLineProductJournals] Zero records returned. Ensure test data covers this entity or remove it from the run.\");",
-                  "}"
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_ProductNumber') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/AssetMaintenanceWorkOrderLineProductJournals?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "});"
                 ],
                 "type": "text/javascript"
               }
@@ -1123,7 +1225,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/InventoryAdjustmentJournalEntriesV2?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=1000",
+              "raw": "{{base_url}}/data/InventoryAdjustmentJournalEntriesV2?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -1138,11 +1240,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET InventoryAdjustmentJournalEntriesV2\nFilter: ItemNumber in {{restrictedItems}}\nItem fields checked: ItemNumber"
+            "description": "GET InventoryAdjustmentJournalEntriesV2\nFilter: ItemNumber in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: ItemNumber"
           },
           "event": [
             {
@@ -1153,7 +1259,9 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
-                  "// Item fields checked: ItemNumber\\n// NOTE: Data for InventoryAdjustmentJournalEntriesV2 may legitimately be absent in some environments.",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top truncation hiding a leak.",
+                  "// Item fields checked: ItemNumber",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
                   "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
@@ -1171,14 +1279,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -1195,11 +1310,32 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "// Data-existence assertion skipped for this entity",
-                  "// (records may legitimately be absent depending on test data scope)",
-                  "if (records.length === 0) {",
-                  "    console.warn(\"[InventoryAdjustmentJournalEntriesV2] Zero records returned. Ensure test data covers this entity or remove it from the run.\");",
-                  "}"
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_ItemNumber') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/InventoryAdjustmentJournalEntriesV2?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "});"
                 ],
                 "type": "text/javascript"
               }
@@ -1225,7 +1361,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/InventoryCountingJournalLines?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=1000",
+              "raw": "{{base_url}}/data/InventoryCountingJournalLines?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -1240,11 +1376,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET InventoryCountingJournalLines\nFilter: ItemNumber in {{restrictedItems}}\nItem fields checked: ItemNumber"
+            "description": "GET InventoryCountingJournalLines\nFilter: ItemNumber in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: ItemNumber"
           },
           "event": [
             {
@@ -1255,7 +1395,9 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
-                  "// Item fields checked: ItemNumber\\n// NOTE: Data for InventoryCountingJournalLines may legitimately be absent in some environments.",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top truncation hiding a leak.",
+                  "// Item fields checked: ItemNumber",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
                   "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
@@ -1273,14 +1415,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -1297,11 +1446,32 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "// Data-existence assertion skipped for this entity",
-                  "// (records may legitimately be absent depending on test data scope)",
-                  "if (records.length === 0) {",
-                  "    console.warn(\"[InventoryCountingJournalLines] Zero records returned. Ensure test data covers this entity or remove it from the run.\");",
-                  "}"
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_ItemNumber') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/InventoryCountingJournalLines?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "});"
                 ],
                 "type": "text/javascript"
               }
@@ -1327,7 +1497,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/InventoryMovementJournalEntries?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=1000",
+              "raw": "{{base_url}}/data/InventoryMovementJournalEntries?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -1342,11 +1512,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET InventoryMovementJournalEntries\nFilter: ItemNumber in {{restrictedItems}}\nItem fields checked: ItemNumber"
+            "description": "GET InventoryMovementJournalEntries\nFilter: ItemNumber in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: ItemNumber"
           },
           "event": [
             {
@@ -1357,7 +1531,9 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
-                  "// Item fields checked: ItemNumber\\n// NOTE: Data for InventoryMovementJournalEntries may legitimately be absent in some environments.",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top truncation hiding a leak.",
+                  "// Item fields checked: ItemNumber",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
                   "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
@@ -1375,14 +1551,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -1399,11 +1582,32 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "// Data-existence assertion skipped for this entity",
-                  "// (records may legitimately be absent depending on test data scope)",
-                  "if (records.length === 0) {",
-                  "    console.warn(\"[InventoryMovementJournalEntries] Zero records returned. Ensure test data covers this entity or remove it from the run.\");",
-                  "}"
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_ItemNumber') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/InventoryMovementJournalEntries?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "});"
                 ],
                 "type": "text/javascript"
               }
@@ -1429,7 +1633,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/InventoryMovementJournalEntriesV2?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=1000",
+              "raw": "{{base_url}}/data/InventoryMovementJournalEntriesV2?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -1444,11 +1648,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET InventoryMovementJournalEntriesV2\nFilter: ItemNumber in {{restrictedItems}}\nItem fields checked: ItemNumber"
+            "description": "GET InventoryMovementJournalEntriesV2\nFilter: ItemNumber in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: ItemNumber"
           },
           "event": [
             {
@@ -1459,7 +1667,9 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
-                  "// Item fields checked: ItemNumber\\n// NOTE: Data for InventoryMovementJournalEntriesV2 may legitimately be absent in some environments.",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top truncation hiding a leak.",
+                  "// Item fields checked: ItemNumber",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
                   "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
@@ -1477,14 +1687,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -1501,11 +1718,32 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "// Data-existence assertion skipped for this entity",
-                  "// (records may legitimately be absent depending on test data scope)",
-                  "if (records.length === 0) {",
-                  "    console.warn(\"[InventoryMovementJournalEntriesV2] Zero records returned. Ensure test data covers this entity or remove it from the run.\");",
-                  "}"
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_ItemNumber') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/InventoryMovementJournalEntriesV2?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "});"
                 ],
                 "type": "text/javascript"
               }
@@ -1531,7 +1769,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/InventoryMovementJournalEntriesV3?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=1000",
+              "raw": "{{base_url}}/data/InventoryMovementJournalEntriesV3?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -1546,11 +1784,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET InventoryMovementJournalEntriesV3\nFilter: ItemNumber in {{restrictedItems}}\nItem fields checked: ItemNumber"
+            "description": "GET InventoryMovementJournalEntriesV3\nFilter: ItemNumber in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: ItemNumber"
           },
           "event": [
             {
@@ -1561,7 +1803,9 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
-                  "// Item fields checked: ItemNumber\\n// NOTE: Data for InventoryMovementJournalEntriesV3 may legitimately be absent in some environments.",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top truncation hiding a leak.",
+                  "// Item fields checked: ItemNumber",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
                   "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
@@ -1579,14 +1823,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -1603,11 +1854,32 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "// Data-existence assertion skipped for this entity",
-                  "// (records may legitimately be absent depending on test data scope)",
-                  "if (records.length === 0) {",
-                  "    console.warn(\"[InventoryMovementJournalEntriesV3] Zero records returned. Ensure test data covers this entity or remove it from the run.\");",
-                  "}"
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_ItemNumber') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/InventoryMovementJournalEntriesV3?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "});"
                 ],
                 "type": "text/javascript"
               }
@@ -1633,7 +1905,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/InventoryMovementJournalEntriesV4?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=1000",
+              "raw": "{{base_url}}/data/InventoryMovementJournalEntriesV4?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -1648,11 +1920,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET InventoryMovementJournalEntriesV4\nFilter: ItemNumber in {{restrictedItems}}\nItem fields checked: ItemNumber"
+            "description": "GET InventoryMovementJournalEntriesV4\nFilter: ItemNumber in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: ItemNumber"
           },
           "event": [
             {
@@ -1663,7 +1939,9 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
-                  "// Item fields checked: ItemNumber\\n// NOTE: Data for InventoryMovementJournalEntriesV4 may legitimately be absent in some environments.",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top truncation hiding a leak.",
+                  "// Item fields checked: ItemNumber",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
                   "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
@@ -1681,14 +1959,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -1705,11 +1990,32 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "// Data-existence assertion skipped for this entity",
-                  "// (records may legitimately be absent depending on test data scope)",
-                  "if (records.length === 0) {",
-                  "    console.warn(\"[InventoryMovementJournalEntriesV4] Zero records returned. Ensure test data covers this entity or remove it from the run.\");",
-                  "}"
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_ItemNumber') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/InventoryMovementJournalEntriesV4?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "});"
                 ],
                 "type": "text/javascript"
               }
@@ -1735,7 +2041,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/InventoryTransferJournalEntries?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=1000",
+              "raw": "{{base_url}}/data/InventoryTransferJournalEntries?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -1750,11 +2056,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET InventoryTransferJournalEntries\nFilter: ItemNumber in {{restrictedItems}}\nItem fields checked: ItemNumber"
+            "description": "GET InventoryTransferJournalEntries\nFilter: ItemNumber in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: ItemNumber"
           },
           "event": [
             {
@@ -1765,7 +2075,9 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
-                  "// Item fields checked: ItemNumber\\n// NOTE: Data for InventoryTransferJournalEntries may legitimately be absent in some environments.",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top truncation hiding a leak.",
+                  "// Item fields checked: ItemNumber",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
                   "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
@@ -1783,14 +2095,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -1807,11 +2126,32 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "// Data-existence assertion skipped for this entity",
-                  "// (records may legitimately be absent depending on test data scope)",
-                  "if (records.length === 0) {",
-                  "    console.warn(\"[InventoryTransferJournalEntries] Zero records returned. Ensure test data covers this entity or remove it from the run.\");",
-                  "}"
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_ItemNumber') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/InventoryTransferJournalEntries?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "});"
                 ],
                 "type": "text/javascript"
               }
@@ -1837,7 +2177,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/InventoryServiceAdjustmentJournalEntries?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=1000",
+              "raw": "{{base_url}}/data/InventoryServiceAdjustmentJournalEntries?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -1852,11 +2192,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET InventoryServiceAdjustmentJournalEntries\nFilter: ItemNumber in {{restrictedItems}}\nItem fields checked: ItemNumber"
+            "description": "GET InventoryServiceAdjustmentJournalEntries\nFilter: ItemNumber in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: ItemNumber"
           },
           "event": [
             {
@@ -1867,7 +2211,9 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
-                  "// Item fields checked: ItemNumber\\n// NOTE: Data for InventoryServiceAdjustmentJournalEntries may legitimately be absent in some environments.",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top truncation hiding a leak.",
+                  "// Item fields checked: ItemNumber",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
                   "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
@@ -1885,14 +2231,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -1909,11 +2262,32 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "// Data-existence assertion skipped for this entity",
-                  "// (records may legitimately be absent depending on test data scope)",
-                  "if (records.length === 0) {",
-                  "    console.warn(\"[InventoryServiceAdjustmentJournalEntries] Zero records returned. Ensure test data covers this entity or remove it from the run.\");",
-                  "}"
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_ItemNumber') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/InventoryServiceAdjustmentJournalEntries?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "});"
                 ],
                 "type": "text/javascript"
               }
@@ -1939,7 +2313,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/ProjectItemJournalTrans?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})&$top=1000",
+              "raw": "{{base_url}}/data/ProjectItemJournalTrans?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -1954,11 +2328,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET ProjectItemJournalTrans\nFilter: ItemId in {{restrictedItems}}\nItem fields checked: ItemId"
+            "description": "GET ProjectItemJournalTrans\nFilter: ItemId in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: ItemId"
           },
           "event": [
             {
@@ -1969,7 +2347,9 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
-                  "// Item fields checked: ItemId\\n// NOTE: Data for ProjectItemJournalTrans may legitimately be absent in some environments.",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top truncation hiding a leak.",
+                  "// Item fields checked: ItemId",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
                   "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
@@ -1987,14 +2367,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -2011,11 +2398,32 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "// Data-existence assertion skipped for this entity",
-                  "// (records may legitimately be absent depending on test data scope)",
-                  "if (records.length === 0) {",
-                  "    console.warn(\"[ProjectItemJournalTrans] Zero records returned. Ensure test data covers this entity or remove it from the run.\");",
-                  "}"
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_ItemId') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/ProjectItemJournalTrans?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "});"
                 ],
                 "type": "text/javascript"
               }
@@ -2041,7 +2449,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/InventJournalTransTransTaxInformations?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_TaxInventVATItemId}})&$top=1000",
+              "raw": "{{base_url}}/data/InventJournalTransTransTaxInformations?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_TaxInventVATItemId}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -2056,11 +2464,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET InventJournalTransTransTaxInformations\nFilter: TaxInventVATItemId in {{restrictedItems}}\nItem fields checked: TaxInventVATItemId"
+            "description": "GET InventJournalTransTransTaxInformations\nFilter: TaxInventVATItemId in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: TaxInventVATItemId"
           },
           "event": [
             {
@@ -2071,7 +2483,9 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
-                  "// Item fields checked: TaxInventVATItemId\\n// NOTE: Data for InventJournalTransTransTaxInformations may legitimately be absent in some environments.",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top truncation hiding a leak.",
+                  "// Item fields checked: TaxInventVATItemId",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
                   "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
@@ -2089,14 +2503,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -2113,11 +2534,32 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "// Data-existence assertion skipped for this entity",
-                  "// (records may legitimately be absent depending on test data scope)",
-                  "if (records.length === 0) {",
-                  "    console.warn(\"[InventJournalTransTransTaxInformations] Zero records returned. Ensure test data covers this entity or remove it from the run.\");",
-                  "}"
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_TaxInventVATItemId') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/InventJournalTransTransTaxInformations?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "});"
                 ],
                 "type": "text/javascript"
               }
@@ -2149,7 +2591,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/InventTransCDSEntities?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})&$top=1000",
+              "raw": "{{base_url}}/data/InventTransCDSEntities?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -2164,11 +2606,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET InventTransCDSEntities\nFilter: ItemId in {{restrictedItems}}\nItem fields checked: ItemId"
+            "description": "GET InventTransCDSEntities\nFilter: ItemId in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: ItemId"
           },
           "event": [
             {
@@ -2179,6 +2625,8 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top=1000 truncation hiding a leak.",
                   "// Item fields checked: ItemId",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
@@ -2197,14 +2645,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -2221,10 +2676,31 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "pm.test(\"Records returned – XDS has not blocked all data\", function () {",
-                  "    pm.expect(records.length,",
-                  "        \"Zero records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
-                  "    ).to.be.above(0);",
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_ItemId') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/InventTransCDSEntities?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -2251,7 +2727,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/InventTransExtended?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})&$top=1000",
+              "raw": "{{base_url}}/data/InventTransExtended?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -2266,11 +2742,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET InventTransExtended\nFilter: ItemId in {{restrictedItems}}\nItem fields checked: ItemId"
+            "description": "GET InventTransExtended\nFilter: ItemId in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: ItemId"
           },
           "event": [
             {
@@ -2281,7 +2761,9 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
-                  "// Item fields checked: ItemId\\n// NOTE: Data for InventTransExtended may legitimately be absent in some environments.",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top=1000 truncation hiding a leak.",
+                  "// Item fields checked: ItemId",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
                   "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
@@ -2299,14 +2781,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -2323,11 +2812,32 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "// Data-existence assertion skipped for this entity",
-                  "// (records may legitimately be absent depending on test data scope)",
-                  "if (records.length === 0) {",
-                  "    console.warn(\"[InventTransExtended] Zero records returned. Ensure test data covers this entity or remove it from the run.\");",
-                  "}"
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_ItemId') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/InventTransExtended?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "});"
                 ],
                 "type": "text/javascript"
               }
@@ -2353,7 +2863,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/AtlasInventTrans?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})&$top=1000",
+              "raw": "{{base_url}}/data/AtlasInventTrans?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -2368,11 +2878,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET AtlasInventTrans\nFilter: ItemId in {{restrictedItems}}\nItem fields checked: ItemId"
+            "description": "GET AtlasInventTrans\nFilter: ItemId in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: ItemId"
           },
           "event": [
             {
@@ -2383,6 +2897,8 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top=1000 truncation hiding a leak.",
                   "// Item fields checked: ItemId",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
@@ -2401,14 +2917,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -2425,10 +2948,31 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "pm.test(\"Records returned – XDS has not blocked all data\", function () {",
-                  "    pm.expect(records.length,",
-                  "        \"Zero records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
-                  "    ).to.be.above(0);",
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_ItemId') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/AtlasInventTrans?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -2455,7 +2999,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/TSIInventTransCollection?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})&$top=1000",
+              "raw": "{{base_url}}/data/TSIInventTransCollection?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -2470,11 +3014,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET TSIInventTransCollection\nFilter: ItemId in {{restrictedItems}}\nItem fields checked: ItemId"
+            "description": "GET TSIInventTransCollection\nFilter: ItemId in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: ItemId"
           },
           "event": [
             {
@@ -2485,6 +3033,8 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top=1000 truncation hiding a leak.",
                   "// Item fields checked: ItemId",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
@@ -2503,14 +3053,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -2527,10 +3084,31 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "pm.test(\"Records returned – XDS has not blocked all data\", function () {",
-                  "    pm.expect(records.length,",
-                  "        \"Zero records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
-                  "    ).to.be.above(0);",
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_ItemId') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/TSIInventTransCollection?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -2563,7 +3141,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/ProductionOrderBillOfMaterialLines?$filter=(dataAreaId eq '{{company_id}}') and (ProductionOrderNumber eq '{{productionOrderNumber}}')&$top=1000",
+              "raw": "{{base_url}}/data/ProductionOrderBillOfMaterialLines?$filter=(dataAreaId eq '{{company_id}}') and ({{filter_ProductionOrderBillOfMaterialLines}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -2574,15 +3152,19 @@
               "query": [
                 {
                   "key": "$filter",
-                  "value": "(dataAreaId eq '{{company_id}}') and (ProductionOrderNumber eq '{{productionOrderNumber}}')"
+                  "value": "(dataAreaId eq '{{company_id}}') and ({{filter_ProductionOrderBillOfMaterialLines}})"
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET ProductionOrderBillOfMaterialLines\nFilter: ProductionOrderNumber eq '{{productionOrderNumber}}'\nItem fields checked: ItemNumber, ComponentItemNumber"
+            "description": "GET ProductionOrderBillOfMaterialLines\nFilter: ProductionOrderNumber eq '{{productionOrderNumber}}' if set (order-scoped, bounded result set), else ItemNumber in {{restrictedItems}} only – in fallback mode the test uses @odata.count plus a chained controlItems-only check instead of relying on $top.\nItem fields checked: ItemNumber, ComponentItemNumber"
           },
           "event": [
             {
@@ -2593,6 +3175,9 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
+                  "// If productionOrderNumber is set, filter is order-scoped (small, bounded result set).",
+                  "// Otherwise filter is restrictedItems ONLY; @odata.count (not value.length) avoids $top",
+                  "// truncation hiding a leak, and a chained pm.sendRequest proves controlItems still return.",
                   "// Item fields checked: ItemNumber, ComponentItemNumber",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
@@ -2606,19 +3191,21 @@
                   "}",
                   "",
                   "var restrictedRangeLabel = \"(\" + RESTRICTED_MIN + \"-\" + RESTRICTED_MAX + \")\";",
+                  "var orderSet = !!(pm.variables.get('productionOrderNumber') || '').trim();",
                   "",
                   "pm.test(\"Status 200 OK\", function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -2635,11 +3222,45 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "pm.test(\"Records returned – XDS has not blocked all data\", function () {",
-                  "    pm.expect(records.length,",
-                  "        \"Zero records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
-                  "    ).to.be.above(0);",
-                  "});"
+                  "if (orderSet) {",
+                  "    pm.test(\"Records returned – XDS has not blocked all data\", function () {",
+                  "        pm.expect(records.length,",
+                  "            \"Zero records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "} else {",
+                  "    var totalCount = body[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "        pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "        pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "    });",
+                  "",
+                  "    var baseUrl       = pm.variables.get('base_url') || '';",
+                  "    var accessToken   = pm.variables.get('access_token') || '';",
+                  "    var companyId     = pm.variables.get('company_id') || '';",
+                  "    var controlFilter = pm.collectionVariables.get('controlItems_ItemNumber') || '';",
+                  "",
+                  "    pm.sendRequest({",
+                  "        url: baseUrl + \"/data/ProductionOrderBillOfMaterialLines?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "        method: 'GET',",
+                  "        header: {",
+                  "            'Authorization': 'Bearer ' + accessToken,",
+                  "            'Accept': 'application/json',",
+                  "            'OData-Version': '4.0'",
+                  "        }",
+                  "    }, function (err, res) {",
+                  "        var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "        var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "        pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "            pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "            pm.expect(controlCount,",
+                  "                \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "            ).to.be.above(0);",
+                  "        });",
+                  "    });",
+                  "}"
                 ],
                 "type": "text/javascript"
               }
@@ -2665,7 +3286,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/BatchOrderFormulaLines?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=1000",
+              "raw": "{{base_url}}/data/BatchOrderFormulaLines?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemNumber}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -2680,11 +3301,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET BatchOrderFormulaLines\nFilter: ItemNumber in {{restrictedItems}}\nItem fields checked: ItemNumber, ComponentItemNumber"
+            "description": "GET BatchOrderFormulaLines\nFilter: ItemNumber in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: ItemNumber, ComponentItemNumber"
           },
           "event": [
             {
@@ -2695,7 +3320,9 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
-                  "// Item fields checked: ItemNumber, ComponentItemNumber\\n// NOTE: Data for BatchOrderFormulaLines may legitimately be absent in some environments.",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top truncation hiding a leak.",
+                  "// Item fields checked: ItemNumber, ComponentItemNumber",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
                   "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
@@ -2713,14 +3340,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -2737,11 +3371,32 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "// Data-existence assertion skipped for this entity",
-                  "// (records may legitimately be absent depending on test data scope)",
-                  "if (records.length === 0) {",
-                  "    console.warn(\"[BatchOrderFormulaLines] Zero records returned. Ensure test data covers this entity or remove it from the run.\");",
-                  "}"
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_ItemNumber') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/BatchOrderFormulaLines?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "});"
                 ],
                 "type": "text/javascript"
               }
@@ -2767,7 +3422,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/TSI_ProdBOMLines?$filter=(dataAreaId eq '{{company_id}}') and (ProdId eq '{{productionOrderNumber}}')&$top=1000",
+              "raw": "{{base_url}}/data/TSI_ProdBOMLines?$filter=(dataAreaId eq '{{company_id}}') and ({{filter_TSI_ProdBOMLines}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -2778,15 +3433,19 @@
               "query": [
                 {
                   "key": "$filter",
-                  "value": "(dataAreaId eq '{{company_id}}') and (ProdId eq '{{productionOrderNumber}}')"
+                  "value": "(dataAreaId eq '{{company_id}}') and ({{filter_TSI_ProdBOMLines}})"
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET TSI_ProdBOMLines\nFilter: ProdId eq '{{productionOrderNumber}}'\nItem fields checked: ItemId"
+            "description": "GET TSI_ProdBOMLines\nFilter: ProdId eq '{{productionOrderNumber}}' if set (order-scoped, bounded result set), else ItemId in {{restrictedItems}} only – in fallback mode the test uses @odata.count plus a chained controlItems-only check instead of relying on $top.\nItem fields checked: ItemId"
           },
           "event": [
             {
@@ -2797,6 +3456,9 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
+                  "// If productionOrderNumber is set, filter is order-scoped (small, bounded result set).",
+                  "// Otherwise filter is restrictedItems ONLY; @odata.count (not value.length) avoids $top",
+                  "// truncation hiding a leak, and a chained pm.sendRequest proves controlItems still return.",
                   "// Item fields checked: ItemId",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
@@ -2810,19 +3472,21 @@
                   "}",
                   "",
                   "var restrictedRangeLabel = \"(\" + RESTRICTED_MIN + \"-\" + RESTRICTED_MAX + \")\";",
+                  "var orderSet = !!(pm.variables.get('productionOrderNumber') || '').trim();",
                   "",
                   "pm.test(\"Status 200 OK\", function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -2839,18 +3503,51 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "pm.test(\"Records returned – XDS has not blocked all data\", function () {",
-                  "    pm.expect(records.length,",
-                  "        \"Zero records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
-                  "    ).to.be.above(0);",
-                  "});"
+                  "if (orderSet) {",
+                  "    pm.test(\"Records returned – XDS has not blocked all data\", function () {",
+                  "        pm.expect(records.length,",
+                  "            \"Zero records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "} else {",
+                  "    var totalCount = body[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "        pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "        pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "    });",
+                  "",
+                  "    var baseUrl       = pm.variables.get('base_url') || '';",
+                  "    var accessToken   = pm.variables.get('access_token') || '';",
+                  "    var companyId     = pm.variables.get('company_id') || '';",
+                  "    var controlFilter = pm.collectionVariables.get('controlItems_ItemId') || '';",
+                  "",
+                  "    pm.sendRequest({",
+                  "        url: baseUrl + \"/data/TSI_ProdBOMLines?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "        method: 'GET',",
+                  "        header: {",
+                  "            'Authorization': 'Bearer ' + accessToken,",
+                  "            'Accept': 'application/json',",
+                  "            'OData-Version': '4.0'",
+                  "        }",
+                  "    }, function (err, res) {",
+                  "        var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "        var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "        pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "            pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "            pm.expect(controlCount,",
+                  "                \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "            ).to.be.above(0);",
+                  "        });",
+                  "    });",
+                  "}"
                 ],
                 "type": "text/javascript"
               }
             }
           ]
-        }
-        ,
+        },
         {
           "name": "RobExProdBOM",
           "request": {
@@ -2870,7 +3567,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/RobExProdBOM?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})&$top=1000",
+              "raw": "{{base_url}}/data/RobExProdBOM?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -2885,11 +3582,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET RobExProdBOM\nFilter: ItemId in {{restrictedItems}}\nItem fields checked: ItemId"
+            "description": "GET RobExProdBOM\nFilter: ItemId in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: ItemId"
           },
           "event": [
             {
@@ -2900,6 +3601,8 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top=1000 truncation hiding a leak.",
                   "// Item fields checked: ItemId",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
@@ -2918,14 +3621,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -2942,10 +3652,31 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "pm.test(\"Records returned – XDS has not blocked all data\", function () {",
-                  "    pm.expect(records.length,",
-                  "        \"Zero records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
-                  "    ).to.be.above(0);",
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_ItemId') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/RobExProdBOM?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -2978,7 +3709,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/ProductionPickingListJournalEntries?$filter=(dataAreaId eq '{{company_id}}') and (ProductionOrderNumber eq '{{productionOrderNumber}}')&$top=1000",
+              "raw": "{{base_url}}/data/ProductionPickingListJournalEntries?$filter=(dataAreaId eq '{{company_id}}') and ({{filter_ProductionPickingListJournalEntries}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -2989,15 +3720,19 @@
               "query": [
                 {
                   "key": "$filter",
-                  "value": "(dataAreaId eq '{{company_id}}') and (ProductionOrderNumber eq '{{productionOrderNumber}}')"
+                  "value": "(dataAreaId eq '{{company_id}}') and ({{filter_ProductionPickingListJournalEntries}})"
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET ProductionPickingListJournalEntries\nFilter: ProductionOrderNumber eq '{{productionOrderNumber}}'\nItem fields checked: ItemNumber"
+            "description": "GET ProductionPickingListJournalEntries\nFilter: ProductionOrderNumber eq '{{productionOrderNumber}}' if set (order-scoped, bounded result set), else ItemNumber in {{restrictedItems}} only – in fallback mode the test uses @odata.count plus a chained controlItems-only check instead of relying on $top.\nItem fields checked: ItemNumber"
           },
           "event": [
             {
@@ -3008,6 +3743,9 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
+                  "// If productionOrderNumber is set, filter is order-scoped (small, bounded result set).",
+                  "// Otherwise filter is restrictedItems ONLY; @odata.count (not value.length) avoids $top",
+                  "// truncation hiding a leak, and a chained pm.sendRequest proves controlItems still return.",
                   "// Item fields checked: ItemNumber",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
@@ -3021,19 +3759,21 @@
                   "}",
                   "",
                   "var restrictedRangeLabel = \"(\" + RESTRICTED_MIN + \"-\" + RESTRICTED_MAX + \")\";",
+                  "var orderSet = !!(pm.variables.get('productionOrderNumber') || '').trim();",
                   "",
                   "pm.test(\"Status 200 OK\", function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -3050,11 +3790,45 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "pm.test(\"Records returned – XDS has not blocked all data\", function () {",
-                  "    pm.expect(records.length,",
-                  "        \"Zero records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
-                  "    ).to.be.above(0);",
-                  "});"
+                  "if (orderSet) {",
+                  "    pm.test(\"Records returned – XDS has not blocked all data\", function () {",
+                  "        pm.expect(records.length,",
+                  "            \"Zero records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "} else {",
+                  "    var totalCount = body[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "        pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "        pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "    });",
+                  "",
+                  "    var baseUrl       = pm.variables.get('base_url') || '';",
+                  "    var accessToken   = pm.variables.get('access_token') || '';",
+                  "    var companyId     = pm.variables.get('company_id') || '';",
+                  "    var controlFilter = pm.collectionVariables.get('controlItems_ItemNumber') || '';",
+                  "",
+                  "    pm.sendRequest({",
+                  "        url: baseUrl + \"/data/ProductionPickingListJournalEntries?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "        method: 'GET',",
+                  "        header: {",
+                  "            'Authorization': 'Bearer ' + accessToken,",
+                  "            'Accept': 'application/json',",
+                  "            'OData-Version': '4.0'",
+                  "        }",
+                  "    }, function (err, res) {",
+                  "        var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "        var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "        pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "            pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "            pm.expect(controlCount,",
+                  "                \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "            ).to.be.above(0);",
+                  "        });",
+                  "    });",
+                  "}"
                 ],
                 "type": "text/javascript"
               }
@@ -3080,7 +3854,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/EDIProdPickingListLines?$filter=(dataAreaId eq '{{company_id}}') and (ProdId eq '{{productionOrderNumber}}')&$top=1000",
+              "raw": "{{base_url}}/data/EDIProdPickingListLines?$filter=(dataAreaId eq '{{company_id}}') and ({{filter_EDIProdPickingListLines}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -3091,15 +3865,19 @@
               "query": [
                 {
                   "key": "$filter",
-                  "value": "(dataAreaId eq '{{company_id}}') and (ProdId eq '{{productionOrderNumber}}')"
+                  "value": "(dataAreaId eq '{{company_id}}') and ({{filter_EDIProdPickingListLines}})"
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET EDIProdPickingListLines\nFilter: ProdId eq '{{productionOrderNumber}}'\nItem fields checked: ItemId"
+            "description": "GET EDIProdPickingListLines\nFilter: ProdId eq '{{productionOrderNumber}}' if set (order-scoped, bounded result set), else ItemId in {{restrictedItems}} only – in fallback mode the test uses @odata.count plus a chained controlItems-only check instead of relying on $top.\nItem fields checked: ItemId"
           },
           "event": [
             {
@@ -3110,7 +3888,10 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
-                  "// Item fields checked: ItemId\\n// NOTE: Data for EDIProdPickingListLines may legitimately be absent in some environments.",
+                  "// If productionOrderNumber is set, filter is order-scoped (small, bounded result set).",
+                  "// Otherwise filter is restrictedItems ONLY; @odata.count (not value.length) avoids $top",
+                  "// truncation hiding a leak, and a chained pm.sendRequest proves controlItems still return.",
+                  "// Item fields checked: ItemId",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
                   "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
@@ -3123,19 +3904,21 @@
                   "}",
                   "",
                   "var restrictedRangeLabel = \"(\" + RESTRICTED_MIN + \"-\" + RESTRICTED_MAX + \")\";",
+                  "var orderSet = !!(pm.variables.get('productionOrderNumber') || '').trim();",
                   "",
                   "pm.test(\"Status 200 OK\", function () {",
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -3152,10 +3935,44 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "// Data-existence assertion skipped for this entity",
-                  "// (records may legitimately be absent depending on test data scope)",
-                  "if (records.length === 0) {",
-                  "    console.warn(\"[EDIProdPickingListLines] Zero records returned. Ensure test data covers this entity or remove it from the run.\");",
+                  "if (orderSet) {",
+                  "    pm.test(\"Records returned – XDS has not blocked all data\", function () {",
+                  "        pm.expect(records.length,",
+                  "            \"Zero records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "} else {",
+                  "    var totalCount = body[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "        pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "        pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "    });",
+                  "",
+                  "    var baseUrl       = pm.variables.get('base_url') || '';",
+                  "    var accessToken   = pm.variables.get('access_token') || '';",
+                  "    var companyId     = pm.variables.get('company_id') || '';",
+                  "    var controlFilter = pm.collectionVariables.get('controlItems_ItemId') || '';",
+                  "",
+                  "    pm.sendRequest({",
+                  "        url: baseUrl + \"/data/EDIProdPickingListLines?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "        method: 'GET',",
+                  "        header: {",
+                  "            'Authorization': 'Bearer ' + accessToken,",
+                  "            'Accept': 'application/json',",
+                  "            'OData-Version': '4.0'",
+                  "        }",
+                  "    }, function (err, res) {",
+                  "        var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "        var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "        pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "            pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "            pm.expect(controlCount,",
+                  "                \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "            ).to.be.above(0);",
+                  "        });",
+                  "    });",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -3182,7 +3999,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/DemandPlanningPickingListJournalEntries?$filter={{restrictedItems_TSIItemId}}&$top=1000",
+              "raw": "{{base_url}}/data/DemandPlanningPickingListJournalEntries?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_TSIItemId}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -3193,15 +4010,19 @@
               "query": [
                 {
                   "key": "$filter",
-                  "value": "{{restrictedItems_TSIItemId}}"
+                  "value": "(dataAreaId eq '{{company_id}}') and ({{restrictedItems_TSIItemId}})"
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET DemandPlanningPickingListJournalEntries\nFilter: TSIItemId in {{restrictedItems}}\nItem fields checked: TSIItemId"
+            "description": "GET DemandPlanningPickingListJournalEntries\nFilter: TSIItemId in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: TSIItemId"
           },
           "event": [
             {
@@ -3212,7 +4033,9 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
-                  "// Item fields checked: TSIItemId\\n// NOTE: Data for DemandPlanningPickingListJournalEntries may legitimately be absent in some environments.",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top truncation hiding a leak.",
+                  "// Item fields checked: TSIItemId",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
                   "var RESTRICTED_MAX = parseInt(pm.collectionVariables.get(\"restrictedRangeMax\") || \"18499\", 10);",
@@ -3230,14 +4053,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -3254,11 +4084,32 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "// Data-existence assertion skipped for this entity",
-                  "// (records may legitimately be absent depending on test data scope)",
-                  "if (records.length === 0) {",
-                  "    console.warn(\"[DemandPlanningPickingListJournalEntries] Zero records returned. Ensure test data covers this entity or remove it from the run.\");",
-                  "}"
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_TSIItemId') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/DemandPlanningPickingListJournalEntries?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
+                  "});"
                 ],
                 "type": "text/javascript"
               }
@@ -3290,7 +4141,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/ProdCalcTransBiEntities?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_Resource}})&$top=1000",
+              "raw": "{{base_url}}/data/ProdCalcTransBiEntities?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_Resource}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -3305,11 +4156,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET ProdCalcTransBiEntities\nFilter: Resource in {{restrictedItems}}\nItem fields checked: Resource"
+            "description": "GET ProdCalcTransBiEntities\nFilter: Resource in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: Resource"
           },
           "event": [
             {
@@ -3320,6 +4175,8 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top=1000 truncation hiding a leak.",
                   "// Item fields checked: Resource",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
@@ -3338,14 +4195,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -3362,10 +4226,31 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "pm.test(\"Records returned – XDS has not blocked all data\", function () {",
-                  "    pm.expect(records.length,",
-                  "        \"Zero records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
-                  "    ).to.be.above(0);",
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_Resource') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/ProdCalcTransBiEntities?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -3398,7 +4283,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/RobExReqTrans?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})&$top=1000",
+              "raw": "{{base_url}}/data/RobExReqTrans?$filter=(dataAreaId eq '{{company_id}}') and ({{restrictedItems_ItemId}})&$top=100&$count=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -3413,11 +4298,15 @@
                 },
                 {
                   "key": "$top",
-                  "value": "1000"
+                  "value": "100"
+                },
+                {
+                  "key": "$count",
+                  "value": "true"
                 }
               ]
             },
-            "description": "GET RobExReqTrans\nFilter: ItemId in {{restrictedItems}}\nItem fields checked: ItemId"
+            "description": "GET RobExReqTrans\nFilter: ItemId in {{restrictedItems}} only; $count=true gives the true total (immune to $top truncation).\nExistence proof (controlItems) is a chained pm.sendRequest.\nItem fields checked: ItemId"
           },
           "event": [
             {
@@ -3428,6 +4317,8 @@
                   "// Restricted range and test item lists are driven by collection variables:",
                   "//   restrictedRangeMin, restrictedRangeMax  – define the hidden item ID range",
                   "//   parentItem, phantomItem                 – BOM header items used in filters",
+                  "// Filter is restrictedItems ONLY, so any row is inherently a leak;",
+                  "// @odata.count (not value.length) avoids $top=1000 truncation hiding a leak.",
                   "// Item fields checked: ItemId",
                   "",
                   "var RESTRICTED_MIN = parseInt(pm.collectionVariables.get(\"restrictedRangeMin\") || \"18000\", 10);",
@@ -3446,14 +4337,21 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "var body = pm.response.json() || {};",
+                  "",
                   "pm.test(\"Response is valid OData JSON with value array\", function () {",
-                  "    var body = pm.response.json();",
                   "    pm.expect(body).to.have.property(\"value\").that.is.an(\"array\");",
                   "});",
                   "",
-                  "var records = (pm.response.json() || {}).value || [];",
+                  "var records = body.value || [];",
+                  "var totalCount = body[\"@odata.count\"];",
                   "",
-                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any item field\", function () {",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" exist (true total via @odata.count)\", function () {",
+                  "    pm.expect(totalCount, \"@odata.count missing – is $count=true supported for this entity?\").to.not.be.undefined;",
+                  "    pm.expect(totalCount, \"XDS LEAK – \" + totalCount + \" restricted-item record(s) exist (filter is restrictedItems only)\").to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"No restricted items \" + restrictedRangeLabel + \" present in any returned item field\", function () {",
                   "    var violations = [];",
                   "    records.forEach(function (record, idx) {",
                   "        ITEM_FIELDS.forEach(function (field) {",
@@ -3470,10 +4368,31 @@
                   "    ).to.be.empty;",
                   "});",
                   "",
-                  "pm.test(\"Records returned – XDS has not blocked all data\", function () {",
-                  "    pm.expect(records.length,",
-                  "        \"Zero records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
-                  "    ).to.be.above(0);",
+                  "// Existence proof scoped ONLY to controlItems, also via @odata.count, so it",
+                  "// can't be crowded out by restricted-item volume in the main request.",
+                  "var baseUrl       = pm.variables.get('base_url') || '';",
+                  "var accessToken   = pm.variables.get('access_token') || '';",
+                  "var companyId     = pm.variables.get('company_id') || '';",
+                  "var controlFilter = pm.collectionVariables.get('controlItems_ItemId') || '';",
+                  "",
+                  "pm.sendRequest({",
+                  "    url: baseUrl + \"/data/RobExReqTrans?$filter=(dataAreaId eq '\" + companyId + \"') and (\" + controlFilter + \")&$top=1&$count=true\",",
+                  "    method: 'GET',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + accessToken,",
+                  "        'Accept': 'application/json',",
+                  "        'OData-Version': '4.0'",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    var controlBody  = (!err && res) ? (res.json() || {}) : {};",
+                  "    var controlCount = controlBody[\"@odata.count\"];",
+                  "",
+                  "    pm.test(\"Records returned – XDS has not blocked all data (control items, via @odata.count)\", function () {",
+                  "        pm.expect(controlCount, \"@odata.count missing from control-item response\").to.not.be.undefined;",
+                  "        pm.expect(controlCount,",
+                  "            \"Zero control-item records returned. Verify test data exists and the querying identity can read non-restricted records.\"",
+                  "        ).to.be.above(0);",
+                  "    });",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -3916,23 +4835,45 @@
       "script": {
         "type": "text/javascript",
         "exec": [
-          "// Build OData eq/or filter fragments from restrictedItems for each field name variant.",
-          "// Update restrictedItems variable to change which item numbers are queried.",
-          "var items = (pm.collectionVariables.get('restrictedItems') || '')",
-          "    .split(',')",
-          "    .map(function(s) { return s.trim(); })",
-          "    .filter(Boolean);",
+          "// Build OData eq/or filter fragments from restrictedItems and controlItems for each field name variant.",
+          "// Update restrictedItems/controlItems variables to change which item numbers are queried.",
+          "function parseList(varName) {",
+          "    return (pm.collectionVariables.get(varName) || '')",
+          "        .split(',')",
+          "        .map(function(s) { return s.trim(); })",
+          "        .filter(Boolean);",
+          "}",
           "",
-          "function buildFilter(field) {",
+          "var restrictedItems = parseList('restrictedItems');",
+          "var controlItems    = parseList('controlItems');",
+          "",
+          "function buildFilter(items, field) {",
           "    return items.map(function(id) { return field + \" eq '\" + id + \"'\"; }).join(' or ');",
           "}",
           "",
-          "pm.collectionVariables.set('restrictedItems_ItemNumber',        buildFilter('ItemNumber'));",
-          "pm.collectionVariables.set('restrictedItems_ItemId',            buildFilter('ItemId'));",
-          "pm.collectionVariables.set('restrictedItems_ProductNumber',     buildFilter('ProductNumber'));",
-          "pm.collectionVariables.set('restrictedItems_TaxInventVATItemId', buildFilter('TaxInventVATItemId'));",
-          "pm.collectionVariables.set('restrictedItems_TSIItemId',           buildFilter('TSIItemId'));",
-          "pm.collectionVariables.set('restrictedItems_Resource',            buildFilter('Resource'));"
+          "var FIELDS = ['ItemNumber', 'ItemId', 'ProductNumber', 'TaxInventVATItemId', 'TSIItemId', 'Resource', 'ComponentItemNumber'];",
+          "FIELDS.forEach(function(field) {",
+          "    pm.collectionVariables.set('restrictedItems_' + field, buildFilter(restrictedItems, field));",
+          "    pm.collectionVariables.set('controlItems_' + field,    buildFilter(controlItems, field));",
+          "});",
+          "",
+          "// If productionOrderNumber is set, filter production entities by that order.",
+          "// Otherwise fall back to a restrictedItems-only filter (like InventTrans); the request's",
+          "// test script then uses $count=true + a chained controlItems-only pm.sendRequest so",
+          "// $top truncation can't hide a leak or crowd out the existence proof.",
+          "function buildOrderOrItemFilter(orderField, itemField) {",
+          "    // pm.variables.get (not collectionVariables) so an env-level override/clear is honored.",
+          "    var orderVal = (pm.variables.get('productionOrderNumber') || '').trim();",
+          "    if (orderVal) {",
+          "        return orderField + \" eq '\" + orderVal + \"'\";",
+          "    }",
+          "    return buildFilter(restrictedItems, itemField);",
+          "}",
+          "",
+          "pm.collectionVariables.set('filter_ProductionOrderBillOfMaterialLines', buildOrderOrItemFilter('ProductionOrderNumber', 'ItemNumber'));",
+          "pm.collectionVariables.set('filter_TSI_ProdBOMLines',                   buildOrderOrItemFilter('ProdId', 'ItemId'));",
+          "pm.collectionVariables.set('filter_ProductionPickingListJournalEntries', buildOrderOrItemFilter('ProductionOrderNumber', 'ItemNumber'));",
+          "pm.collectionVariables.set('filter_EDIProdPickingListLines',            buildOrderOrItemFilter('ProdId', 'ItemId'));"
         ]
       }
     }
@@ -3995,9 +4936,9 @@
     },
     {
       "key": "productionOrderNumber",
-      "value": "10001108",
+      "value": "",
       "type": "string",
-      "description": "Production order number from test data. Used to filter ProductionOrderBillOfMaterialLines."
+      "description": "Optional production order number from test data, used to filter ProdBOM/ProdJournalBOM requests. Left blank by default since no fixed order number is guaranteed to exist across environments; set it to target a specific order, or leave blank to fall back to filtering by restrictedItems/controlItems."
     },
     {
       "key": "restrictedItems_TSIItemId",
@@ -4010,6 +4951,42 @@
       "value": "",
       "type": "string",
       "description": "Auto-built by collection pre-request script from restrictedItems. OData or-clause for Resource field."
+    },
+    {
+      "key": "controlItems_ItemNumber",
+      "value": "",
+      "type": "string",
+      "description": "Auto-built by collection pre-request script from controlItems. OData or-clause for ItemNumber field."
+    },
+    {
+      "key": "controlItems_ItemId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-built by collection pre-request script from controlItems. OData or-clause for ItemId field."
+    },
+    {
+      "key": "controlItems_ProductNumber",
+      "value": "",
+      "type": "string",
+      "description": "Auto-built by collection pre-request script from controlItems. OData or-clause for ProductNumber field."
+    },
+    {
+      "key": "controlItems_TaxInventVATItemId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-built by collection pre-request script from controlItems. OData or-clause for TaxInventVATItemId field."
+    },
+    {
+      "key": "controlItems_TSIItemId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-built by collection pre-request script from controlItems. OData or-clause for TSIItemId field."
+    },
+    {
+      "key": "controlItems_Resource",
+      "value": "",
+      "type": "string",
+      "description": "Auto-built by collection pre-request script from controlItems. OData or-clause for Resource field."
     }
   ]
 }
