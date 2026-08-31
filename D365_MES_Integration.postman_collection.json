@@ -498,7 +498,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/data/TSI_Jobs?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_order}}'",
+              "raw": "{{base_url}}/data/TSI_Jobs?$filter=dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_order}}'&$expand=Notes",
               "host": [
                 "{{base_url}}"
               ],
@@ -510,6 +510,10 @@
                 {
                   "key": "$filter",
                   "value": "dataAreaId eq '{{company_id}}' and ProdId eq '{{prod_order}}'"
+                },
+                {
+                  "key": "$expand",
+                  "value": "Notes"
                 }
               ]
             }
