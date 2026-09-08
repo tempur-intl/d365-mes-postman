@@ -388,6 +388,44 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Create Movement Work",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"_companyId\": \"{{company_id}}\",\n  \"_messageQueue\": \"JmgMES3P\",\n  \"_messageType\": \"TSICreateMovementWork\",\n  \"_messageContent\": \"{\\\"ProductionOrderNumber\\\":\\\"{{prod_order}}\\\",\\\"LicensePlate\\\":\\\"{{license_plate_number}}\\\",\\\"SourceLocation\\\":\\\"{{source_location}}\\\",\\\"DestinationLocation\\\":\\\"{{destination_location}}\\\",\\\"Quantity\\\":{{movement_quantity}},\\\"ItemId\\\":\\\"{{item_number}}\\\"}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/services/SysMessageServices/SysMessageService/SendMessage",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "services",
+                "SysMessageServices",
+                "SysMessageService",
+                "SendMessage"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -1464,6 +1502,11 @@
       "key": "destination_location",
       "value": "",
       "description": "Destination location for movement work. Override per environment."
+    },
+    {
+      "key": "movement_quantity",
+      "value": "",
+      "description": "Quantity for movement work. Override per environment."
     },
     {
       "key": "production_warehouse_location_id",
