@@ -1504,11 +1504,6 @@
       "description": "Destination location for movement work. Override per environment."
     },
     {
-      "key": "movement_quantity",
-      "value": "",
-      "description": "Quantity for movement work. Override per environment."
-    },
-    {
       "key": "production_warehouse_location_id",
       "value": "",
       "description": "Production warehouse location ID. Override per environment."
