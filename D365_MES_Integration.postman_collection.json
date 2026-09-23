@@ -748,6 +748,80 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Get TSIJmgMES3PMessageMonitorEntity",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "OData-Version",
+                "value": "4.0"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/data/TSIJmgMES3PMessageMonitorEntity?$filter=ProcessingState eq Microsoft.Dynamics.DataEntities.SysMessageState'{{message_state}}'",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "data",
+                "TSIJmgMES3PMessageMonitorEntity"
+              ],
+              "query": [
+                {
+                  "key": "$filter",
+                  "value": "ProcessingState eq Microsoft.Dynamics.DataEntities.SysMessageState'{{message_state}}'"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get TSIJmgMES3PMessageMonitorEntity by Production Order",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "OData-Version",
+                "value": "4.0"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/data/TSIJmgMES3PMessageMonitorEntity?$filter=ProdId eq '{{prod_order}}'",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "data",
+                "TSIJmgMES3PMessageMonitorEntity"
+              ],
+              "query": [
+                {
+                  "key": "$filter",
+                  "value": "ProdId eq '{{prod_order}}'"
+                }
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
