@@ -709,6 +709,47 @@
           "response": []
         },
         {
+          "name": "Get WarehouseWorkHeaders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "OData-Version",
+                "value": "4.0"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/data/WarehouseWorkHeaders?$filter=dataAreaId eq '{{company_id}}' and WarehouseWorkOrderType eq Microsoft.Dynamics.DataEntities.WHSWorkTransType'Invent' and WarehouseWorkStatus ne Microsoft.Dynamics.DataEntities.WHSWorkStatus'Closed' and WarehouseWorkStatus ne Microsoft.Dynamics.DataEntities.WHSWorkStatus'Cancelled' and TargetLicensePlateNumber eq '{{license_plate}}'",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "data",
+                "WarehouseWorkHeaders"
+              ],
+              "query": [
+                {
+                  "key": "$filter",
+                  "value": "dataAreaId eq '{{company_id}}' and WarehouseWorkOrderType eq Microsoft.Dynamics.DataEntities.WHSWorkTransType'Invent' and WarehouseWorkStatus ne Microsoft.Dynamics.DataEntities.WHSWorkStatus'Closed' and WarehouseWorkStatus ne Microsoft.Dynamics.DataEntities.WHSWorkStatus'Cancelled' and TargetLicensePlateNumber eq '{{license_plate}}'"
+                },
+                {
+                  "key": "$select",
+                  "value": "WarehouseWorkId,InventorySiteId,WarehouseId,WarehouseWorkOrderType,WarehouseWorkStatus,SourceOrderNumber,LoadId,ShipmentId,TargetLicensePlateNumber,WarehouseWorkClosedDateTime,WarehouseWorkProcessingStartDateTime"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Get ItemBatches",
           "request": {
             "method": "GET",
