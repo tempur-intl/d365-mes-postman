@@ -710,6 +710,21 @@
         },
         {
           "name": "Get WarehouseWorkHeaders",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const licensePlate = pm.variables.get('license_plate');",
+                  "if (!licensePlate) {",
+                  "    let filter = \"dataAreaId eq '\" + pm.variables.replaceIn('{{company_id}}') + \"' and WarehouseWorkOrderType eq Microsoft.Dynamics.DataEntities.WHSWorkTransType'Invent' and WarehouseWorkStatus ne Microsoft.Dynamics.DataEntities.WHSWorkStatus'Closed' and WarehouseWorkStatus ne Microsoft.Dynamics.DataEntities.WHSWorkStatus'Cancelled'\";",
+                  "    pm.request.url.query.upsert({ key: '$filter', value: filter });",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [
